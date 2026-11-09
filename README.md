@@ -1,7 +1,6 @@
 # SkillsUnleashed
 
-`skills_unleashed` (SkillsUnleashed) is a gameplay mod that gives **every specialization one new fourth ability** (key 4),
-It depends on EMTweaks (in the `emtweaks` repository) for its effects: in this mod and every comment of it, "shockwave" means EMTweaks' shockwave (`emtweaks:shockwave`).
+`skills_unleashed` (SkillsUnleashed) is a gameplay mod that gives **every specialization one new fourth ability** (key 4). It depends on EMTweaks (in the `emtweaks` repository) for its effects: in this mod, "shockwave" means EMTweaks' shockwave (`emtweaks:shockwave`).
 
 The abilities use the fourth ability slot (Kyubu's `docs/abilities.md`) with a claim by specialization, so a specialization whose
 ability is not finished yet keeps the placeholder. The abilities are learned in the skill tree like the other fourth
@@ -9,32 +8,27 @@ abilities.
 
 ## The eight abilities
 
-All eight are built and played in single-player. On a joined game each one runs on
-`Server.exe`; the replay named in the table checks it. Two joined clients ("watcher") means a second client draws the
-ability on the caster from the server's events.
+All eight are built and played in single-player. On a joined game each one runs on `Server.exe`. A second joined client (the "watcher") draws the ability on the caster from the server's events.
 
-| Class | Specialization | Ability id | Name: what it does | Joined game (replay) |
+| Class | Specialization | Ability id | Name: what it does | Joined game |
 |---|---|---|---|---|
-| warrior | berserker | `skills_unleashed:berserker` | Uppercut: hops forward and launches the nearest enemy; its landing stuns everyone around it | server, watcher (`server-berserker-0720`, `watch-berserker-0720`) |
-| warrior | guardian | `skills_unleashed:guardian` | Taunt: a shout taunts the aimed enemy, whose hits on the player are 35% softer meanwhile | server, watcher (`server-guardian-0720`) |
-| ranger | sniper | `skills_unleashed:sniper` | Bow of Light: a summoned bow for one charged shot whose arrow pierces every enemy | server, watcher (`server-sniper-0720`, `projectile-hit-client-0720`) |
-| ranger | scout | `skills_unleashed:scout` | Trap Deployment: a thrown bear trap hurts and snares the first enemy on it; up to 3 at once | server, watcher (`server-scout-0720`) |
-| rogue | assassin | `skills_unleashed:assassin` | Shadow Strike: four shadows dash through the aimed spot in an X and hit hard | server, watcher (`server-assassin-0720`) |
-| rogue | ninja | `skills_unleashed:ninja` | Flash Bomb: a backflip and a smoke bomb that hurts and stuns, then hides the player from every enemy | server, watcher (`server-ninja-0720`) |
-| mage | fire_mage | `skills_unleashed:fire_mage` | Fire Circle: hold to charge mana, release to cast a burning circle at the aimed spot, wider with more mana | server, watcher (`server-fire-mage-0720`) |
-| mage | water_mage | `skills_unleashed:water_mage` | Chain of the Deep: a water pulse from the feet binds every enemy it reaches in place | server, watcher (`server-water-mage-0720`) |
+| warrior | berserker | `skills_unleashed:berserker` | Uppercut: hops forward and launches the nearest enemy; its landing stuns everyone around it | server, watcher |
+| warrior | guardian | `skills_unleashed:guardian` | Taunt: a shout taunts the aimed enemy, whose hits on the player are 35% softer meanwhile | server, watcher |
+| ranger | sniper | `skills_unleashed:sniper` | Bow of Light: a summoned bow for one charged shot whose arrow pierces every enemy | server, watcher |
+| ranger | scout | `skills_unleashed:scout` | Trap Deployment: a thrown bear trap hurts and snares the first enemy on it; up to 3 at once | server, watcher |
+| rogue | assassin | `skills_unleashed:assassin` | Shadow Strike: four shadows dash through the aimed spot in an X and hit hard | server, watcher |
+| rogue | ninja | `skills_unleashed:ninja` | Flash Bomb: a backflip and a smoke bomb that hurts and stuns, then hides the player from every enemy | server, watcher |
+| mage | fire_mage | `skills_unleashed:fire_mage` | Fire Circle: hold to charge mana, release to cast a burning circle at the aimed spot, wider with more mana | server, watcher |
+| mage | water_mage | `skills_unleashed:water_mage` | Chain of the Deep: a water pulse from the feet binds every enemy it reaches in place | server, watcher |
 
 The numbers (ranks, cooldowns, damage, radii, timings) are in one table, `src/lib/tuning.lua` ([Tuning](#tuning)); every
-one is a first guess until the player says otherwise. No one has yet played a joined game with two people; the
-joined checks so far are replays.
+one is a first guess until the player says otherwise. No one has yet played a joined game with two people; the joined checks so far were scripted.
 
 ## The rules every ability follows
 
 1. **An icon of its own**, in the style of the game's (below).
 2. **A character animation** that starts from one of the game's own poses and may add to it (animations.md (Kyubu's `docs/animations.md`)).
 3. **Every timing is work in progress**: all numbers are in one table, and the hit lands on a clip marker.
-4. **Not tested under Wine** unless it is a unit test or a mapping probe; what the game does is documented when mapped.
-5. **When it is ready, it is staged in `kyubu-play`** and the player is asked to test it there.
 
 ## How the mod is built
 
@@ -59,8 +53,8 @@ sources into `package.preload["skills_unleashed.<path>"]` and ends with `require
 source, run the bundler, and the test `test_skills_unleashed_script_is_the_current_bundle` fails until you have.
 
 ```
-python tools/bundle_lua.py --mod skills_unleashed            # writes scripts/client.lua
-python tools/bundle_lua.py --mod skills_unleashed --check    # exit 1 when it is stale
+python tools/bundle_lua.py --mod <this folder>/skills_unleashed            # writes scripts/client.lua
+python tools/bundle_lua.py --mod <this folder>/skills_unleashed --check    # exit 1 when it is stale
 ```
 
 ### Tuning
@@ -165,6 +159,8 @@ from a centre; the fit is within about 3 levels of the game's backgrounds. An ic
 The checker is a floor, not a judge of taste: an icon also goes on a sheet beside six of the game's icons of its tone,
 and the player must accept it.
 
+Run these from a Kyubu checkout, where the tool is (`tools/icon_check.py`), on the mod's own files:
+
 ```
 python tools/icon_check.py build icons-src/<spec>.grid     # text grid -> assets/icons/<spec>.png
 python tools/icon_check.py check assets/icons/<spec>.png    # exit 1 and the reason when outside the envelope
@@ -188,13 +184,11 @@ a = 230,230,235
 ## Testing
 
 The pure logic and the shared library are unit-tested in a LuaJIT with a recording stub of `kyubu`
-(`tests/`); no game is needed. The CMake target is `skills_unleashed_tests`. What the
-unit tests cannot judge (how an ability looks and feels) is judged by the player in `kyubu-play`. `scripts/stage_lua_mod.sh
-skills_unleashed` copies the mod there, with the game closed.
+(`tests/`); no game is needed. The CMake target is `skills_unleashed_tests`. What the unit tests cannot judge (how an ability looks and feels) is for players to judge in play.
 
 ## Limits
 
-- **Joined games, by replay only.** All eight abilities run on `Server.exe`. Two joined clients (caster and watcher) are checked by replay for all eight. The Sniper's watcher is checked by screenshot only: the server relays the game's own arrow, and the mod logs nothing for it. The watcher's frames show the bow of light; none catches the arrow in flight. No two people have played a joined game yet.
+- **Joined games.** All eight abilities run on `Server.exe`. The caster and a watcher were checked with scripted clients for all eight. The Sniper's watcher was checked by screenshot only: the server relays the game's own arrow, and the mod logs nothing for it. The watcher's frames show the bow of light; none catches the arrow in flight. No two people have played a joined game yet.
 - **One rank per character.** The rank is `skills[9]`: a character that changes specialization keeps it.
 - **A claim wins over `any`.** Once SkillsUnleashed claims the warrior's specializations, the warrior demos
   (`shockwave_demo`, `fourth_ability_demo`), which claim the warrior's `any`, are
@@ -204,7 +198,7 @@ skills_unleashed` copies the mod there, with the game closed.
   and numbers added to the game's text fill by a wrapper of `skill_description_fill` (`src/lib/tooltip.lua`). Each ability
   registers its own entry; the words and the numbers are its own. The numbers go under placeholder names the game
   fills itself (the engine leaves a name of the mod's own blank).
-- **The sound** is the game's `play_sound` called from the mod (ids guessed, not heard yet).
+- **The sound** is the game's `play_sound` called from the mod (the ids are guesses, not yet checked by ear).
 - **Every number is a first guess** until the player says otherwise.
 
 ## Getting it
