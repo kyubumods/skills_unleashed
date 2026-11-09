@@ -1,0 +1,17 @@
+id = "skills_unleashed"
+name = "SkillsUnleashed"
+version = "0.1.2"
+authors = ["Penchev"]
+kyubu = "^1.4"
+sides = ["client", "server"]
+trust = "full"
+gate = true
+description = "A new fourth ability for every specialization and changes vanilla ones"
+
+[dependencies]
+emtweaks = "^0.1"
+
+[scripts]
+common = "scripts/common.lua"
+client = "scripts/client.lua"
+server = "scripts/server.lua"

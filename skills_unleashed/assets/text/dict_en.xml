@@ -1,0 +1,81 @@
+<root>
+  <!-- Skill tooltips of SkillsUnleashed. The key is "description:" or "details:" plus the name that
+       lib/tooltip.lua puts at index 9 of the World's skill-name map. The skill box has a fixed height that
+       the longest vanilla text fits (about 18 rows): keep a text shorter than that, the numbers included.
+       The @names are the game's own placeholders, used as carriers for this mod's numbers (logic.tooltip_values): the
+       engine left a name of the mod's own blank. -->
+
+  <speech key="description:AbilityUppercut">
+    [Uppercut $stress]
+    %
+    You hop forward and launch the nearest enemy high into the air. When it lands, it stuns everyone around it.
+  </speech>
+
+  <speech key="details:AbilityUppercut">
+    The cooldown lasts [@smashcooldown $number] seconds. The landing reaches [@retreatdistance $number] blocks around the enemy.
+  </speech>
+
+  <speech key="description:AbilityTaunt">
+    [Taunt $stress]
+    %
+    You shout forcing the enemy you target to become taunted. It hits you 35% softer meanwhile.
+  </speech>
+
+  <speech key="details:AbilityTaunt">
+    The cooldown lasts [@smashcooldown $number] seconds. The taunt lasts [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityBowOfLight">
+    [Bow of Light $stress]
+    %
+    You summon a bow of light for one shot. The arrow pierces every enemy. Hold to charge it.
+  </speech>
+
+  <speech key="details:AbilityBowOfLight">
+    The cooldown lasts [@smashcooldown $number] seconds. You keep the bow for [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityTrap">
+    [Trap Deployment $stress]
+    %
+    You toss a bear trap ahead of you. The first enemy to step on it is hurt and snared in place. Up to 3 traps at once.
+  </speech>
+
+  <speech key="details:AbilityTrap">
+    The cooldown lasts [@smashcooldown $number] seconds. The snare lasts [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityFireCircle">
+    [Fire Circle $stress]
+    %
+    Hold to charge your mana, then release to cast a circle of fire on the ground where you aim. The more mana you charge, the wider it grows. Enemies standing in it burn.
+  </speech>
+
+  <speech key="details:AbilityFireCircle">
+    The cooldown lasts [@smashcooldown $number] seconds. The circle burns for [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityChainOfTheDeep">
+    [Chain of the Deep $stress]
+    %
+    You send a pulse of water out from your feet. Every enemy it reaches is bound in chains. It cannot move or attack, and is frozen in place.
+  </speech>
+
+  <speech key="details:AbilityChainOfTheDeep">
+    The cooldown lasts [@smashcooldown $number] seconds. The chains hold for [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityFlashBomb">
+    [Flash Bomb $stress]
+    %
+    You backflip and throw a smoke bomb at the ground. It hurts enemies close by and stuns the one it hits. The blast flips you up and hides you from every enemy until it wears off or you deal damage.
+  </speech>
+
+  <speech key="details:AbilityFlashBomb">
+    The cooldown lasts [@smashcooldown $number] seconds. True stealth lasts [@retreatdistance $number] seconds.
+  </speech>
+  <speech key="description:AbilityShadowStrike">
+    [Shadow Strike $stress]
+    %
+    You stand still and call four shadows of yourself. They dash through the spot you are looking at, from the corners of an X. Every enemy a shadow touches takes a heavy hit.
+  </speech>
+
+  <speech key="details:AbilityShadowStrike">
+    The cooldown lasts [@smashcooldown $number] seconds. Each shadow deals [@retreatdistance $number] times your damage.
+  </speech>
+</root>

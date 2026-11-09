@@ -1,0 +1,70 @@
+# Scout: Trap Deployment, the trap going off under an enemy. The trap's own clip, not the player's: its parts are read
+# as models-src/scout-trap.rig.toml reads them:
+#   body     the whole trap: pos in voxels from where it lies (z up), rot its tilt
+#   hand_l   the front jaw, hand_r the back jaw: rot.x is how far it is open, 0 (shut, upright) to 90 (flat on the ground)
+# 1000 ms, a time in ms is a thousandth; the trap stays in the air 0.2 to 0.3 s:
+#   0 to 110 ms      the trap snaps up, 7.6 voxels at the top, and settles at 7
+#   50 to 120 ms     the jaws shut, faster and faster: `hit` when they meet (the damage, the snare, the click)
+#   120 to 370 ms    it stays up, 0.25 s, shaking
+#   370 to 620 ms    it falls, as under gravity (7 voxels in 250 ms), still shaking; one small bounce, down again at 760 ms
+#   to 900 ms        the shake dies; then it lies shut until the game takes it away
+duration = 1000
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The lift: off the ground at once, a little too high, the stay, the fall and a bounce of 0.9.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "set"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.110, v = [0, 0, 7.6], ease = "ease_out" },
+  { t = 0.180, v = [0, 0, 7], ease = "smooth" },
+  { t = 0.370, v = [0, 0, 7] },
+  { t = 0.620, v = [0, 0, 0], ease = "ease_in" },
+  { t = 0.690, v = [0, 0, 0.9], ease = "ease_out" },
+  { t = 0.760, v = [0, 0, 0], ease = "ease_in" },
+  { t = 1.000, v = [0, 0, 0] },
+]
+
+# The front jaw: open for the first 50 ms of the lift, shut by 120 ms, one small bounce apart.
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "set"
+keys = [
+  { t = 0.000, v = [90, 0, 0] },
+  { t = 0.050, v = [90, 0, 0] },
+  { t = 0.120, v = [0, 0, 0], ease = "ease_in" },
+  { t = 0.155, v = [9, 0, 0], ease = "ease_out" },
+  { t = 0.195, v = [0, 0, 0], ease = "ease_in" },
+  { t = 1.000, v = [0, 0, 0] },
+]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "set"
+keys = [
+  { t = 0.000, v = [90, 0, 0] },
+  { t = 0.050, v = [90, 0, 0] },
+  { t = 0.120, v = [0, 0, 0], ease = "ease_in" },
+  { t = 0.160, v = [7, 0, 0], ease = "ease_out" },
+  { t = 0.205, v = [0, 0, 0], ease = "ease_in" },
+  { t = 1.000, v = [0, 0, 0] },
+]
+
+# The shake: hard from the moment the jaws meet at 120 ms, weaker all the way through the stay and the fall (about 12 degrees
+# when it starts down, 5 when it lands), gone by 900 ms.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "set"
+expr = ["sin((t - 120) * 3.4) * 15 * smoothstep(120, 130, t) * (1 - smoothstep(170, 900, t))", "sin((t - 120) * 4.1 + 90) * 13 * smoothstep(120, 130, t) * (1 - smoothstep(170, 900, t))", "sin((t - 120) * 2.7) * 10 * smoothstep(120, 130, t) * (1 - smoothstep(170, 900, t))"]
+
+# The jaws meet: the damage, the snare and the click sound.
+[[marker]]
+t = 0.12
+name = "hit"

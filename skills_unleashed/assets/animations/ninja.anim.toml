@@ -1,0 +1,187 @@
+# Ninja: Flash Bomb, the throw. 814 ms; it ends at the impact and holds its last pose until the bomb hits, then the script plays
+# `ninja_bounce` (the blast's second flip, a separate clip). A time below is a fraction of it:
+#   230 ms = 0.2826 (crouched, the hands behind the back, the head up)   300 ms = 0.3686 (the jump)
+#   461 ms = 0.5663 (one whole backflip)   553 ms = 0.6790 (the tuck opens)   679 ms = 0.8342 (the weapon hand behind the head)
+#   774 ms = 0.9509 (the bomb leaves the hand)   789 ms = 0.9693 (head down, facing the ground)   814 ms = 1 (the impact pose)
+# No borrowed pose: the game's pose 0 is the base and the tracks move it. The
+# beats: crouch (low, both hands behind the back, a quick look up), jump into a tucked backflip, one whole turn, the spin goes on and
+# eases to a stop head down over the ground; the weapon hand throws from behind the head, swinging over and easing in to the middle
+# of the body, and holds there.
+# The weapon hand is taken to be the right one, as for the other abilities. The game's launch lifts the player: nothing here moves
+# the root's height (its z is not drawn), so the clip runs the same on the ground and in the air, and the player may move through it.
+# The bomb is not in this clip: the script throws it from `throw`.
+# No blend: every track starts at rest, and the end pose is where `ninja_bounce` starts (the root at 606 there is -114 in that clip).
+duration = 814
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The whole figure. x is the backflip (positive tips the top backward): a small dip forward in the crouch, then the spin, written as
+# keys every 20 ms from a speed curve: the speed ramps up over the takeoff,
+# peaks to 401 ms and from there dies away softly, as (1-u)^1.8, to nothing at 789 ms: one whole turn by about 461 ms, then a long
+# ease to 597, head down with the face to the ground, creeping on through the throw to 606 at the impact (the blast's turn
+# is in ninja_bounce).
+[[track]]
+part = "root"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3440, v = [-6, 0, 0], ease = "smooth" },
+  { t = 0.3686, v = [-6, 0, 0] },
+  { t = 0.3931, v = [8.4, 0, 0], ease = "linear" },
+  { t = 0.4177, v = [51.4, 0, 0], ease = "linear" },
+  { t = 0.4423, v = [106.1, 0, 0], ease = "linear" },
+  { t = 0.4668, v = [160.8, 0, 0], ease = "linear" },
+  { t = 0.4914, v = [215.4, 0, 0], ease = "linear" },
+  { t = 0.5160, v = [267.9, 0, 0], ease = "linear" },
+  { t = 0.5405, v = [315.4, 0, 0], ease = "linear" },
+  { t = 0.5651, v = [358.3, 0, 0], ease = "linear" },
+  { t = 0.5897, v = [396.7, 0, 0], ease = "linear" },
+  { t = 0.6143, v = [431.0, 0, 0], ease = "linear" },
+  { t = 0.6388, v = [461.2, 0, 0], ease = "linear" },
+  { t = 0.6634, v = [487.6, 0, 0], ease = "linear" },
+  { t = 0.6880, v = [510.5, 0, 0], ease = "linear" },
+  { t = 0.7125, v = [530.0, 0, 0], ease = "linear" },
+  { t = 0.7371, v = [546.4, 0, 0], ease = "linear" },
+  { t = 0.7617, v = [560.0, 0, 0], ease = "linear" },
+  { t = 0.7862, v = [571.0, 0, 0], ease = "linear" },
+  { t = 0.8108, v = [579.6, 0, 0], ease = "linear" },
+  { t = 0.8354, v = [586.2, 0, 0], ease = "linear" },
+  { t = 0.8600, v = [590.9, 0, 0], ease = "linear" },
+  { t = 0.8845, v = [594.0, 0, 0], ease = "linear" },
+  { t = 0.9091, v = [595.8, 0, 0], ease = "linear" },
+  { t = 0.9337, v = [596.7, 0, 0], ease = "linear" },
+  { t = 0.9582, v = [597.0, 0, 0], ease = "linear" },
+  { t = 0.9693, v = [597.0, 0, 0], ease = "linear" },
+  { t = 0.9999, v = [606, 0, 0], ease = "smooth" },
+]
+
+# The trunk. Crouch: leans forward. Takeoff: arches back. Tuck: curls forward round the knees. Then it opens for the throw: the right
+# shoulder goes back with the wind-up (z negative) and comes through with the throw.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [-22, 0, 0], ease = "smooth" },
+  { t = 0.3686, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.4306, v = [12, 0, 0], ease = "ease_out" },
+  { t = 0.5393, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.6790, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.8648, v = [-5, 0, -6], ease = "smooth" },
+  { t = 0.9202, v = [5, 0, -14], ease = "smooth" },
+  { t = 0.9877, v = [-15, 0, 14], ease = "ease_out" },
+]
+
+# The crouch and the stretch: the trunk sinks into the knees (the feet stay), springs up at the takeoff, sinks into the tuck, opens
+# for the throw.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [0, 1.2, -3], ease = "smooth" },
+  { t = 0.3686, v = [0, 1.2, -3.2], ease = "smooth" },
+  { t = 0.4306, v = [0, 0, 1.5], ease = "ease_out" },
+  { t = 0.5393, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.6790, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.8648, v = [0, 0, 0.5], ease = "smooth" },
+]
+
+# The head: a quick look up in the crouch, the chin in through the tuck, then up (in its own frame) to look at the ground below as it
+# throws.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.1721, v = [-8, 0, 0], ease = "smooth" },
+  { t = 0.2826, v = [25, 0, 0], ease = "ease_out" },
+  { t = 0.3686, v = [18, 0, 0], ease = "smooth" },
+  { t = 0.5393, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.6790, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.8955, v = [25, 0, 0], ease = "smooth" },
+  { t = 0.9877, v = [28, 0, 0], ease = "smooth" },
+]
+
+# The weapon hand. Crouch: behind the back. Takeoff: flung up over the head. Tuck: on the shin. Wind-up: behind the head (the bomb is
+# in it). Throw: over the top, fast past the face (the bomb goes), easing in to the middle of the body.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [-3.5, -6.6, 1.1], ease = "smooth" },
+  { t = 0.3686, v = [-3.5, -6.6, 1.1] },
+  { t = 0.4306, v = [-1, 2, 10], ease = "ease_out" },
+  { t = 0.5393, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.6790, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.8341, v = [-3, -5.1, 12.1], ease = "smooth" },
+  { t = 0.9202, v = [-3.5, -0.1, 13], ease = "ease_in" },
+  { t = 0.9509, v = [-4, 3.5, 8], ease = "linear" },
+  { t = 0.9877, v = [-5, 3.9, 3.1], ease = "ease_out" },
+]
+
+# The weapon: angled down behind the back, up with the takeoff, forward on the shin; laid back behind the head, then swung through.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [40, 0, 0], ease = "smooth" },
+  { t = 0.4306, v = [-20, 0, 0], ease = "ease_out" },
+  { t = 0.5393, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.6790, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.8341, v = [140, 0, 0], ease = "smooth" },
+  { t = 0.9202, v = [60, 0, 0], ease = "ease_in" },
+  { t = 0.9509, v = [-10, 0, 0], ease = "linear" },
+  { t = 0.9877, v = [-50, 0, 0], ease = "ease_out" },
+]
+
+# The other hand mirrors the weapon hand in the crouch, the takeoff and the tuck, guards in front of the chest in the wind-up, goes
+# back as the counterweight of the throw.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [3.5, -6.6, 1.1], ease = "smooth" },
+  { t = 0.3686, v = [3.5, -6.6, 1.1] },
+  { t = 0.4306, v = [1, 2, 10], ease = "ease_out" },
+  { t = 0.5393, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.6790, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.8341, v = [3, 3, 3], ease = "smooth" },
+  { t = 0.9509, v = [4, -3, 2], ease = "smooth" },
+  { t = 0.9877, v = [4.5, -4, 2.5], ease = "ease_out" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.3072, v = [40, 0, 0], ease = "smooth" },
+  { t = 0.4306, v = [-20, 0, 0], ease = "ease_out" },
+  { t = 0.5393, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.6790, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.8341, v = [-30, 0, 0], ease = "smooth" },
+  { t = 0.9509, v = [30, 0, 0], ease = "smooth" },
+]
+
+# The takeoff: the script launches the player up (and through `lib`, the game's own jump if it is on the ground).
+[[marker]]
+t = 0.3686
+name = "jump"
+
+# The weapon hand is past the face, head down over the ground: the bomb leaves it, straight at the ground.
+[[marker]]
+t = 0.9509
+name = "throw"

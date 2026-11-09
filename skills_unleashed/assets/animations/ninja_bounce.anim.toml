@@ -1,0 +1,161 @@
+# Ninja: Flash Bomb, the bounce. Played by the script when the bomb hits (the throw clip, ninja.anim.toml, holds its last pose until
+# then), while the blast throws the player away from the impact; 1000 ms. It starts from the throw clip's end pose
+# (head down: the root's 606 there is -114 here, the same turn) and does one more backflip: the blast's
+# kick finishes the turn under way and carries into a whole tucked flip, which then eases out to upright. A time below is a fraction:
+#   70 ms = 0.07 (the kick: arms flung out wide, the trunk arched)   140 ms = 0.14 (upright again, into the extra flip)
+#   250 ms = 0.25 (tucked)   500 ms = 0.5 (the tuck opens)   850 ms = 0.85 (the flip is done)   1000 ms = 1 (at rest)
+# The weapon hand is the right one, as in the throw clip. Nothing here moves the root's height or place: the launch is the script's.
+# No blend: every track starts at the throw clip's end pose and ends at rest or one whole turn from it.
+duration = 1000
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The whole figure. x is the backflip, written as keys every 20 ms from a speed curve:
+# the kick takes the speed to its peak in 40 ms, it holds through the tuck to 250 ms, then dies away softly, as
+# (1-u)^2, to nothing at 850 ms, at 360.
+[[track]]
+part = "root"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [-114, 0, 0] },
+  { t = 0.0200, v = [-108.5, 0, 0], ease = "linear" },
+  { t = 0.0400, v = [-92.0, 0, 0], ease = "linear" },
+  { t = 0.0600, v = [-69.9, 0, 0], ease = "linear" },
+  { t = 0.0800, v = [-47.9, 0, 0], ease = "linear" },
+  { t = 0.1000, v = [-25.8, 0, 0], ease = "linear" },
+  { t = 0.1200, v = [-3.8, 0, 0], ease = "linear" },
+  { t = 0.1400, v = [18.3, 0, 0], ease = "linear" },
+  { t = 0.1600, v = [40.3, 0, 0], ease = "linear" },
+  { t = 0.1800, v = [62.4, 0, 0], ease = "linear" },
+  { t = 0.2000, v = [84.4, 0, 0], ease = "linear" },
+  { t = 0.2200, v = [106.5, 0, 0], ease = "linear" },
+  { t = 0.2400, v = [128.5, 0, 0], ease = "linear" },
+  { t = 0.2600, v = [150.4, 0, 0], ease = "linear" },
+  { t = 0.2800, v = [171.0, 0, 0], ease = "linear" },
+  { t = 0.3000, v = [190.2, 0, 0], ease = "linear" },
+  { t = 0.3200, v = [208.0, 0, 0], ease = "linear" },
+  { t = 0.3400, v = [224.6, 0, 0], ease = "linear" },
+  { t = 0.3600, v = [239.9, 0, 0], ease = "linear" },
+  { t = 0.3800, v = [254.0, 0, 0], ease = "linear" },
+  { t = 0.4000, v = [267.0, 0, 0], ease = "linear" },
+  { t = 0.4200, v = [278.8, 0, 0], ease = "linear" },
+  { t = 0.4400, v = [289.7, 0, 0], ease = "linear" },
+  { t = 0.4600, v = [299.5, 0, 0], ease = "linear" },
+  { t = 0.4800, v = [308.3, 0, 0], ease = "linear" },
+  { t = 0.5000, v = [316.2, 0, 0], ease = "linear" },
+  { t = 0.5200, v = [323.3, 0, 0], ease = "linear" },
+  { t = 0.5400, v = [329.6, 0, 0], ease = "linear" },
+  { t = 0.5600, v = [335.1, 0, 0], ease = "linear" },
+  { t = 0.5800, v = [339.9, 0, 0], ease = "linear" },
+  { t = 0.6000, v = [344.1, 0, 0], ease = "linear" },
+  { t = 0.6200, v = [347.6, 0, 0], ease = "linear" },
+  { t = 0.6400, v = [350.5, 0, 0], ease = "linear" },
+  { t = 0.6600, v = [353.0, 0, 0], ease = "linear" },
+  { t = 0.6800, v = [355.0, 0, 0], ease = "linear" },
+  { t = 0.7000, v = [356.6, 0, 0], ease = "linear" },
+  { t = 0.7200, v = [357.8, 0, 0], ease = "linear" },
+  { t = 0.7400, v = [358.6, 0, 0], ease = "linear" },
+  { t = 0.7600, v = [359.3, 0, 0], ease = "linear" },
+  { t = 0.7800, v = [359.6, 0, 0], ease = "linear" },
+  { t = 0.8000, v = [359.9, 0, 0], ease = "linear" },
+  { t = 0.8200, v = [360.0, 0, 0], ease = "linear" },
+  { t = 0.8400, v = [360.0, 0, 0], ease = "linear" },
+  { t = 0.8500, v = [360.0, 0, 0], ease = "linear" },
+]
+
+# The trunk: arched back by the kick, curled into the tuck, opened, and at rest.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [-15, 0, 14] },
+  { t = 0.0700, v = [22, 0, 0], ease = "ease_out" },
+  { t = 0.2500, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.5000, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.7000, v = [-5, 0, 0], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0.5] },
+  { t = 0.0700, v = [0, 0, 1.5], ease = "ease_out" },
+  { t = 0.2500, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.5000, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.7000, v = [0, 0, 0.5], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The head: off the ground with the kick, the chin in for the tuck, up again as it opens.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [28, 0, 0] },
+  { t = 0.0700, v = [10, 0, 0], ease = "ease_out" },
+  { t = 0.2500, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.5000, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.7500, v = [5, 0, 0], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The hands: flung out wide by the kick, both on the shins in the tuck, a little out as it opens (the daggers out for balance), and
+# down to rest.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [-5, 3.9, 3.1] },
+  { t = 0.0700, v = [5, 0, 6], ease = "ease_out" },
+  { t = 0.2500, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.5000, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.7000, v = [3, 1, 3], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [-50, 0, 0] },
+  { t = 0.0700, v = [0, 40, 0], ease = "ease_out" },
+  { t = 0.2500, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.5000, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.7500, v = [0, 15, 0], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [4.5, -4, 2.5] },
+  { t = 0.0700, v = [-5, 0, 6], ease = "ease_out" },
+  { t = 0.2500, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.5000, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.7000, v = [-3, 1, 3], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [30, 0, 0] },
+  { t = 0.0700, v = [0, -40, 0], ease = "ease_out" },
+  { t = 0.2500, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.5000, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.7500, v = [0, -15, 0], ease = "smooth" },
+  { t = 1.0000, v = [0, 0, 0], ease = "smooth" },
+]

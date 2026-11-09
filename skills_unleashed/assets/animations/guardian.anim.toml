@@ -1,0 +1,135 @@
+# Guardian: Taunt, the shout. 1500 ms; a time below is a
+# fraction of it:
+#   390 ms = 0.26 (the hands are up beside the head)   450 ms = 0.30 (end of the wind-up)   540 ms = 0.36 (the hands have dropped: the shout)
+#   1020 ms = 0.68 (the shout ends)   1500 ms = 1 (back at rest)
+# No borrowed pose: the game's pose 0 is the base, where a mod ability holds the club upright in the right hand, and the tracks
+# move it. The three beats: wind-up (both hands rise and ease in beside the head, turned so the club's tip points backward, the head
+# pitches up), shout (the hands drop fast, out to the sides and away from the body, and tremble as they stop), rest (an ease back).
+# No blend: every track starts and ends at rest.
+duration = 1500
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The club hand. Wind-up: up and out, round the head, to beside it. Shout: down and further out, clear of the body.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [5, 1, 4.5], ease = "ease_in" },
+  { t = 0.26, v = [6, -2, 11], ease = "ease_out" },
+  { t = 0.30, v = [6.3, -2.5, 11.5], ease = "smooth" },
+  { t = 0.36, v = [8, -1.5, 1], ease = "ease_in" },
+  { t = 0.68, v = [7.5, -1.5, 0.8], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The club. x is the tip going backward: 0 upright, 90 laid back. z fans the laid-back club out, away from the head. y leans the
+# club out to the right: in the shout it stands out from the body like the arm.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.26, v = [100, 0, 14], ease = "smooth" },
+  { t = 0.30, v = [106, 0, 16], ease = "smooth" },
+  { t = 0.36, v = [12, 52, 0], ease = "ease_in" },
+  { t = 0.68, v = [10, 48, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The free hand: the mirror of the club hand (x of pos, y and z of rot change sign).
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-5, 1, 4.5], ease = "ease_in" },
+  { t = 0.26, v = [-6, -2, 11], ease = "ease_out" },
+  { t = 0.30, v = [-6.3, -2.5, 11.5], ease = "smooth" },
+  { t = 0.36, v = [-8, -1.5, 1], ease = "ease_in" },
+  { t = 0.68, v = [-7.5, -1.5, 0.8], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.26, v = [100, 0, -14], ease = "smooth" },
+  { t = 0.30, v = [106, 0, -16], ease = "smooth" },
+  { t = 0.36, v = [12, -52, 0], ease = "ease_in" },
+  { t = 0.68, v = [10, -48, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The tremble of the hands as they stop: 13 cycles a second, on from 510 to 555 ms and dying away by 1020 ms. The two hands are out
+# of step. The club trembles with its hand, and a little on its lean.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["sin(t * 4.7) * 0.7 * smoothstep(0.34, 0.37, u) * (1 - smoothstep(0.40, 0.68, u))", "0", "sin(t * 4.7 + 90) * 0.5 * smoothstep(0.34, 0.37, u) * (1 - smoothstep(0.40, 0.68, u))"]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+expr = ["0", "sin(t * 4.7 + 40) * 3 * smoothstep(0.34, 0.37, u) * (1 - smoothstep(0.40, 0.68, u))", "0"]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+expr = ["sin(t * 4.7 + 140) * 0.7 * smoothstep(0.34, 0.37, u) * (1 - smoothstep(0.40, 0.68, u))", "0", "sin(t * 4.7 + 230) * 0.5 * smoothstep(0.34, 0.37, u) * (1 - smoothstep(0.40, 0.68, u))"]
+
+# The head: pitched up with the wind-up, thrown a little further back for the shout, and level again at rest.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.26, v = [24, 0, 0], ease = "smooth" },
+  { t = 0.30, v = [26, 0, 0], ease = "smooth" },
+  { t = 0.36, v = [31, 0, 0], ease = "ease_in" },
+  { t = 0.68, v = [27, 0, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The trunk (a liberty, kept small): a breath in with the wind-up, a short drop into the knees with the shout.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.26, v = [0, 0, 0.8], ease = "smooth" },
+  { t = 0.30, v = [0, 0, 1.0], ease = "smooth" },
+  { t = 0.36, v = [0, 0, -1.6], ease = "ease_in" },
+  { t = 0.68, v = [0, 0, -1.2], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.26, v = [4, 0, 0], ease = "smooth" },
+  { t = 0.36, v = [-4, 0, 0], ease = "ease_in" },
+  { t = 0.68, v = [-3, 0, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The moment the hands stop: the shout itself.
+[[marker]]
+t = 0.36
+name = "shout"

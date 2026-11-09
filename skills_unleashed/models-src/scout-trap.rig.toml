@@ -1,0 +1,44 @@
+# The Scout's bear trap as a rig for kyubu-animator, to see and edit the trap's own clips (assets/animations/scout_trap_*.anim.toml):
+#   kyubu-animator <clip> --rig scout-trap.rig.toml --models <the folder `make_scout_trap.py --cub` wrote>
+# Nothing here is from the game: the models are the mod's own. The clips use a creature's part names, which lib/trap_rig maps onto
+# the trap's three ghosts:
+#   body     the whole trap.  pos: its place from where it lies, in voxels (z up: the hop, the lift).  rot: its tilt (the shake).
+#   hand_l   the front jaw.   rot.x: how far it is open, 0 (shut: upright on the bar) to 90 (open: flat on the ground).
+#   hand_r   the back jaw.    rot.x: the same.
+# The origin is the middle of the trap on the ground; x right, y forward, z up, as a clip's frame.
+
+name = "scout trap (the mod's own models)"
+
+[[node]]
+name  = "ground"
+steps = [["translate", 0, 0, 0]]
+
+# The tilt turns the trap round its middle, one voxel up (the hinge line), so a shake does not swing it sideways.
+[[node]]
+name   = "trap"
+parent = "ground"
+part   = "body"
+steps  = [["translate", "body.pos"], ["translate", 0, 0, 1], ["rot_z", "body.rot.z"], ["rot_y", "body.rot.y"], ["rot_x", "body.rot.x"],
+          ["translate", 0, 0, -1]]
+
+# The bar, the disc and the pad: 13 x 7 x 2, lying on the ground.
+[[node]]
+name   = "plate"
+parent = "trap"
+model  = "scout-trap-plate.cub"
+steps  = [["translate", 0, 0, 1]]
+
+# A jaw: 13 x 6 x 2, turning round the edge of the bar one voxel up. The model lies flat, so shut is a quarter turn up.
+[[node]]
+name   = "jaw_front"
+parent = "trap"
+part   = "hand_l"
+model  = "scout-trap-jaw.cub"
+steps  = [["translate", 0, 0.5, 1], ["rot_x", 90], ["rot_x", "-hand_l.rot.x"], ["translate", 0, 3, 0]]
+
+[[node]]
+name   = "jaw_back"
+parent = "trap"
+part   = "hand_r"
+model  = "scout-trap-jaw.cub"
+steps  = [["rot_z", 180], ["translate", 0, 0.5, 1], ["rot_x", 90], ["rot_x", "-hand_r.rot.x"], ["translate", 0, 3, 0]]

@@ -1,0 +1,161 @@
+# Ninja: Flash Bomb, the throw when the player is already in the air, made from ninja.anim.toml. The script plays this clip in
+# place of ninja.anim.toml when the ability starts off the ground; the push up is the script's in both. 514 ms; a time below is
+# a fraction of it:
+#   0 ms (the push up and the flip start at once)   160 ms = 0.3113 (one whole backflip)   253 ms = 0.4922 (the tuck opens)
+#   379 ms = 0.7374 (the weapon hand behind the head)   474 ms = 0.9222 (the bomb leaves the hand)   489 ms = 0.9514 (head down)
+#   514 ms = 1 (the impact pose)
+# No crouch and no windup: the backflip starts on the first frame. Every track is the ground
+# clip's from its takeoff (300 ms) on, 300 ms earlier, so it ends on the same pose and the same `ninja_bounce` follows the impact.
+# No blend: every track starts at rest, and the end pose is where `ninja_bounce` starts (the root at 606 there is -114 in that clip).
+duration = 514
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The whole figure. x is the backflip, keys every 20 ms from a speed curve (spin_keys.py air): the speed ramps up over the first
+# 38 ms, peaks to 101 ms and dies away softly, as (1-u)^1.8, to nothing at 489 ms, head down with the face to the ground at 597,
+# creeping on through the throw to 606 at the impact (the blast's turn is in ninja_bounce).
+[[track]]
+part = "root"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0389, v = [14.2, 0, 0], ease = "linear" },
+  { t = 0.0778, v = [56.8, 0, 0], ease = "linear" },
+  { t = 0.1167, v = [111.0, 0, 0], ease = "linear" },
+  { t = 0.1556, v = [165.1, 0, 0], ease = "linear" },
+  { t = 0.1946, v = [219.2, 0, 0], ease = "linear" },
+  { t = 0.2335, v = [271.1, 0, 0], ease = "linear" },
+  { t = 0.2724, v = [318.2, 0, 0], ease = "linear" },
+  { t = 0.3113, v = [360.7, 0, 0], ease = "linear" },
+  { t = 0.3502, v = [398.7, 0, 0], ease = "linear" },
+  { t = 0.3891, v = [432.6, 0, 0], ease = "linear" },
+  { t = 0.4280, v = [462.5, 0, 0], ease = "linear" },
+  { t = 0.4669, v = [488.7, 0, 0], ease = "linear" },
+  { t = 0.5058, v = [511.3, 0, 0], ease = "linear" },
+  { t = 0.5447, v = [530.7, 0, 0], ease = "linear" },
+  { t = 0.5837, v = [546.9, 0, 0], ease = "linear" },
+  { t = 0.6226, v = [560.4, 0, 0], ease = "linear" },
+  { t = 0.6615, v = [571.3, 0, 0], ease = "linear" },
+  { t = 0.7004, v = [579.8, 0, 0], ease = "linear" },
+  { t = 0.7393, v = [586.3, 0, 0], ease = "linear" },
+  { t = 0.7782, v = [590.9, 0, 0], ease = "linear" },
+  { t = 0.8171, v = [594.0, 0, 0], ease = "linear" },
+  { t = 0.8560, v = [595.9, 0, 0], ease = "linear" },
+  { t = 0.8949, v = [596.7, 0, 0], ease = "linear" },
+  { t = 0.9339, v = [597.0, 0, 0], ease = "linear" },
+  { t = 0.9514, v = [597.0, 0, 0], ease = "linear" },
+  { t = 1.0000, v = [606, 0, 0], ease = "smooth" },
+]
+
+# The trunk: as the ground clip from its takeoff on (the arch, the tuck, the throw).
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [12, 0, 0], ease = "ease_out" },
+  { t = 0.2704, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.4916, v = [-35, 0, 0], ease = "smooth" },
+  { t = 0.7859, v = [-5, 0, -6], ease = "smooth" },
+  { t = 0.8736, v = [5, 0, -14], ease = "smooth" },
+  { t = 0.9805, v = [-15, 0, 14], ease = "ease_out" },
+]
+
+# As the ground clip from its takeoff on (no crouch: there is no ground to sink into).
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [0, 0, 1.5], ease = "ease_out" },
+  { t = 0.2704, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.4916, v = [0, 1, -2], ease = "smooth" },
+  { t = 0.7859, v = [0, 0, 0.5], ease = "smooth" },
+]
+
+# The head: as the ground clip (the chin in for the tuck, up to the ground at the throw).
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.2704, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.4916, v = [-20, 0, 0], ease = "smooth" },
+  { t = 0.8345, v = [25, 0, 0], ease = "smooth" },
+  { t = 0.9805, v = [28, 0, 0], ease = "smooth" },
+]
+
+# The weapon hand: as the ground clip (flung up, the shin, the throw).
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [-1, 2, 10], ease = "ease_out" },
+  { t = 0.2704, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.4916, v = [-2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.7373, v = [-3, -5.1, 12.1], ease = "smooth" },
+  { t = 0.8736, v = [-3.5, -0.1, 13], ease = "ease_in" },
+  { t = 0.9222, v = [-4, 3.5, 8], ease = "linear" },
+  { t = 0.9805, v = [-5, 3.9, 3.1], ease = "ease_out" },
+]
+
+# The weapon: as the ground clip.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [-20, 0, 0], ease = "ease_out" },
+  { t = 0.2704, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.4916, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.7373, v = [140, 0, 0], ease = "smooth" },
+  { t = 0.8736, v = [60, 0, 0], ease = "ease_in" },
+  { t = 0.9222, v = [-10, 0, 0], ease = "linear" },
+  { t = 0.9805, v = [-50, 0, 0], ease = "ease_out" },
+]
+
+# The other hand: as the ground clip.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [1, 2, 10], ease = "ease_out" },
+  { t = 0.2704, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.4916, v = [2, 2.9, -1.9], ease = "smooth" },
+  { t = 0.7373, v = [3, 3, 3], ease = "smooth" },
+  { t = 0.9222, v = [4, -3, 2], ease = "smooth" },
+  { t = 0.9805, v = [4.5, -4, 2.5], ease = "ease_out" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0000, v = [0, 0, 0] },
+  { t = 0.0983, v = [-20, 0, 0], ease = "ease_out" },
+  { t = 0.2704, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.4916, v = [-60, 0, 0], ease = "smooth" },
+  { t = 0.7373, v = [-30, 0, 0], ease = "smooth" },
+  { t = 0.9222, v = [30, 0, 0], ease = "smooth" },
+]
+
+# The push up: the script launches the player again, from the air, at once.
+[[marker]]
+t = 0.0000
+name = "jump"
+
+# The weapon hand is past the face, head down over the ground: the bomb leaves it, straight at the ground.
+[[marker]]
+t = 0.9222
+name = "throw"

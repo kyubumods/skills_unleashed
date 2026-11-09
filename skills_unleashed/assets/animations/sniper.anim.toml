@@ -1,0 +1,166 @@
+# Sniper: Bow of Light, the summoning: the hands go up fast, about half a second, to clasp in front of and above the face; the
+# bow materializes there for 1.5 s, horizontal with its string on top; then the player takes it. 3200 ms; a time below is a
+# fraction of it:
+#   150 ms = 0.046875 (the hands at the sides, in front, palms open)   650 ms = 0.203125 (clasped, palms up: `spawn`, the bow
+#   starts to materialize)   2150 ms = 0.671875 (the bow is whole)   2300 ms = 0.71875 (the hands have risen into it: `catch`)
+#   2380 ms = 0.74375 (a dip under its weight)   2450 ms = 0.765625 (the arms start down)   3200 ms = 1 (back at rest)
+# No borrowed pose: the game's pose 0 is the base and the tracks move it.
+# The weapon is hidden until the take; from `catch` the right hand holds the bow of light, lying across the player with its
+# string on top (hand rot x -90, z 90), and it swings upright as the arm comes down. The materializing bow, its fade-in, the
+# particles and the tune are the script's, not the clip's.
+# No blend: every track starts and ends at rest.
+duration = 3200
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The right hand, which takes the bow: out a little and forward to the side of the hip, up to the clasp in 500 ms (the arc of
+# the rise is the next track), held while the bow forms just above them, up 2 into it, a dip, and down in front.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [1.2, 3.5, 1.5], ease = "ease_out" },
+  { t = 0.203125, v = [-3.0, 9, 11.5], ease = "smooth" },
+  { t = 0.671875, v = [-3.0, 9, 11.5] },
+  { t = 0.718750, v = [-3.0, 9, 13.5], ease = "smooth" },
+  { t = 0.743750, v = [-3.0, 9, 12.7], ease = "ease_out" },
+  { t = 0.765625, v = [-2.9, 9, 13.0], ease = "smooth" },
+  { t = 0.875000, v = [1.5, 6.5, 5], ease = "ease_in" },
+  { t = 1.000000, v = [0, 0, 0], ease = "ease_out" },
+]
+
+# The arc of the rise: out and forward, most in its middle, nothing at its two ends.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["pow(sin(clamp((u - 0.046875) / 0.15625, 0, 1) * 180), 2) * 2", "pow(sin(clamp((u - 0.046875) / 0.15625, 0, 1) * 180), 2) * 1.5", "0"]
+
+# The wait while the bow forms: the clasped hands float, one slow cycle in the 1.5 s, both together.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin((t - 650) * 0.24) * 0.35 * smoothstep(0.21, 0.28, u) * (1 - smoothstep(0.6, 0.67, u))"]
+
+# The palm. x is the top of the fist going forward: open at the sides (-55), palm up (-90) at the clasp, and z turns the level
+# fist across (90), so the bow taken in it lies across the player, its top to their left and its string on top. Back to 0 as
+# the arm comes down: the bow swings upright.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [-55, 0, 0], ease = "ease_out" },
+  { t = 0.203125, v = [-90, 0, 90], ease = "smooth" },
+  { t = 0.765625, v = [-90, 0, 90] },
+  { t = 1.000000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The left hand: the mirror of the right (x of pos changes sign), but it stops short of the middle, so the two fists sit side
+# by side under the bow.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [-1.2, 3.5, 1.5], ease = "ease_out" },
+  { t = 0.203125, v = [3.8, 9, 11.5], ease = "smooth" },
+  { t = 0.671875, v = [3.8, 9, 11.5] },
+  { t = 0.718750, v = [3.8, 9, 13.5], ease = "smooth" },
+  { t = 0.743750, v = [3.8, 9, 12.7], ease = "ease_out" },
+  { t = 0.765625, v = [3.7, 9, 13.0], ease = "smooth" },
+  { t = 0.875000, v = [-1.5, 6.5, 5], ease = "ease_in" },
+  { t = 1.000000, v = [0, 0, 0], ease = "ease_out" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+expr = ["0 - pow(sin(clamp((u - 0.046875) / 0.15625, 0, 1) * 180), 2) * 2", "pow(sin(clamp((u - 0.046875) / 0.15625, 0, 1) * 180), 2) * 1.5", "0"]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin((t - 650) * 0.24) * 0.35 * smoothstep(0.21, 0.28, u) * (1 - smoothstep(0.6, 0.67, u))"]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [-55, 0, 0], ease = "ease_out" },
+  { t = 0.203125, v = [-90, 0, -90], ease = "smooth" },
+  { t = 0.765625, v = [-90, 0, -90] },
+  { t = 1.000000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The head: a small bow toward the open hands, up with them, a little higher while the bow forms above them, a nod with the dip,
+# level at rest.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [-5, 0, 0], ease = "ease_out" },
+  { t = 0.203125, v = [22, 0, 0], ease = "smooth" },
+  { t = 0.671875, v = [26, 0, 0], ease = "smooth" },
+  { t = 0.718750, v = [27, 0, 0], ease = "smooth" },
+  { t = 0.743750, v = [21, 0, 0], ease = "ease_out" },
+  { t = 1.000000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The trunk (a liberty, kept small): it settles as the hands open, rises onto the toes with them and a little more while the
+# bow forms, and sinks with the dip.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [0, 0, -0.3], ease = "ease_out" },
+  { t = 0.203125, v = [0, 0, 0.6], ease = "smooth" },
+  { t = 0.671875, v = [0, 0, 0.9], ease = "smooth" },
+  { t = 0.718750, v = [0, 0, 1.1], ease = "smooth" },
+  { t = 0.743750, v = [0, 0, 0.3], ease = "ease_out" },
+  { t = 1.000000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# A slight lean back with the look up.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000000, v = [0, 0, 0] },
+  { t = 0.046875, v = [0, 0, 0] },
+  { t = 0.203125, v = [3, 0, 0], ease = "smooth" },
+  { t = 0.718750, v = [3.5, 0, 0], ease = "smooth" },
+  { t = 0.765625, v = [1.5, 0, 0], ease = "ease_out" },
+  { t = 1.000000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The player's own weapon is away until the bow is taken.
+[[hide]]
+from = 0.0
+to = 0.71875
+parts = ["weapons"]
+
+# The hands are clasped: the bow starts to materialize above them (whole 1.5 s later, at 0.671875).
+[[marker]]
+t = 0.203125
+name = "spawn"
+
+# The hands have risen into the bow: the player has it.
+[[marker]]
+t = 0.71875
+name = "catch"

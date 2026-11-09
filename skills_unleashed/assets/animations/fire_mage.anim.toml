@@ -1,0 +1,121 @@
+# Fire Mage: Fire Circle, the charge.
+# Both hands go up over the head, a hand's width apart as if holding a ball of fire between them, and the head looks up at them;
+# while the charge is held the hands turn slowly clockwise (seen from above) on a small circle and the trunk sways with them.
+# Weapon agnostic (a mage holds a staff, a wand or bracelets): the pose reads with empty fists, which is how
+# bracelets look (the game draws one on each hand, at 0.6 of its size); a staff or a wand stands upright in the right hand and its
+# tip stirs a wider circle.
+# One lap is the clip: 1200 ms, looped while the charge lasts. The rise is the `blend_in` (400 ms), so it is not repeated each lap.
+# The release is its own clip, `fire_mage_release.anim.toml`, which starts from this clip's pose at the start of a lap.
+# No borrowed pose: the game's pose 0 is the base and the tracks move it. The red
+# particles that swirl round the staff are the script's, not the clip's.
+# The phase of the circle is t * 0.3 degrees (360 in a lap): 0 with the hands in front, 90 at the right, 180 behind, 270 at the left.
+# Every generator below ends a lap where it began, so the loop has no seam.
+duration = 1200
+end = "loop"
+blend_in = 400
+blend_out = 0
+
+# The trunk: up 0.9 and leaned back 8 degrees, breathing twice a lap; it leans after the hands (less back while they are in front)
+# and rolls toward the side they are on.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0, v = [0, -0.4, 0.9] },
+]
+
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin(t * 0.6) * 0.25"]
+
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0, v = [8, 0, 0] },
+]
+
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+expr = ["0 - cos(t * 0.3) * 1.5", "sin(t * 0.3) * 2.5", "0"]
+
+# The right hand: over the head (its centre 3.6 right of, 3.6 forward of and 17.5 above the trunk's hub, solved through the lean), on
+# a circle of 2.8 voxels, bobbing with the breath. Its angles hold the fist (and a staff or wand) upright against the lean (-8) and
+# tip it 10 degrees out toward the side of the circle the hand is on, so a staff's tip draws a circle of about 6.5 voxels.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0, v = [-2.38, 4.3, 20.01] },
+]
+
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["sin(t * 0.3) * 2.8", "cos(t * 0.3) * 2.8", "sin(t * 0.6) * 0.3"]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0, v = [-8, 0, 0] },
+]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+expr = ["0 - cos(t * 0.3) * 10", "sin(t * 0.3) * 10", "0"]
+
+# The left hand: the mirror of the right over the head (3.6 left), on the same circle with the same tilt, so the two move as one.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.0, v = [2.38, 4.3, 20.01] },
+]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+expr = ["sin(t * 0.3) * 2.8", "cos(t * 0.3) * 2.8", "sin(t * 0.6) * 0.3"]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0, v = [-8, 0, 0] },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+expr = ["0 - cos(t * 0.3) * 10", "sin(t * 0.3) * 10", "0"]
+
+# The head: up at the hands (28 degrees), nodding a little with the breath and turning after them.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.0, v = [28, 0, 0] },
+]
+
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+expr = ["sin(t * 0.6) * 1.5", "sin(t * 0.3) * 3", "0 - sin(t * 0.3) * 5"]

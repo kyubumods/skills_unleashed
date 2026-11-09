@@ -1,0 +1,8 @@
+# The options of SkillsUnleashed (docs/config.md). The player's values are in kyubu/config/skills_unleashed.toml.
+
+[options.log_effects]
+type = "bool"
+default = false
+label = "Log every effect"
+group = "Testing"
+description = "Writes a log line for each effect and sound an ability starts. For tests; leave it off to play."

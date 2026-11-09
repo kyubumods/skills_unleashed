@@ -1,0 +1,10 @@
+# Client modules the server script also bundles (they call the game, so they are not in common.txt). The modules under src/server/
+# are server-only and are bundled without being listed.
+lib.bow
+lib.combat
+lib.effect_log
+lib.sites
+lib.snare
+lib.terrain
+lib.ability_channel
+lib.world_events

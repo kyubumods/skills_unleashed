@@ -1,0 +1,143 @@
+# Berserker: Uppercut. The clip lasts the ability (1700 ms); a time below is a fraction of it:
+#   500 ms = 0.294 (end of the wind-up)   650 ms = 0.382 (the hop)   700 ms = 0.412 (the strike)   1700 ms = 1 (end of the twirl)
+# No borrowed pose: the game's pose 0 is the base, where a mod ability holds the club upright in the right hand, and the tracks
+# move it. The three beats: coil (crouch, trunk turned right, club laid back behind the hip), scoop (the club goes under and up
+# to in front of the head as the trunk uncoils), twirl (one turn the way the trunk uncoiled, the club held up, then down to rest).
+# No blend: every track starts at rest and ends at rest or one whole turn from it, and a blend would unwind the whole turns.
+duration = "ability"
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The club hand. Coil: down and behind the back. Scoop: forward along the hip, then up to in front of the head, a little past it,
+# where it stays, above the head, through the twirl; it comes down in the last third.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.071, v = [0.5, 1.5, 1.5], ease = "ease_out" },
+  { t = 0.224, v = [-2, -8, -1], ease = "smooth" },
+  { t = 0.294, v = [-2.5, -9.5, -1.5], ease = "smooth" },
+  { t = 0.324, v = [-1.5, -7, -2], ease = "ease_in" },
+  { t = 0.353, v = [1, -1, -1.5], ease = "linear" },
+  { t = 0.412, v = [-3, 9, 13], ease = "linear" },
+  { t = 0.4943, v = [-3, 8, 15], ease = "ease_out" },
+  { t = 0.588, v = [-1, 3, 15.5], ease = "smooth" },
+  { t = 0.735, v = [0.5, 1, 14], ease = "smooth" },
+  { t = 0.853, v = [2.5, 1, 8], ease = "ease_in" },
+  { t = 0.941, v = [1, 0.3, 1.5], ease = "linear" },
+  { t = 1.000, v = [0, 0, 0], ease = "ease_out" },
+]
+
+# The club. x is the swing: 0 upright, 90 laid back, 180 straight down, 270 forward, 360 upright again. It goes the long way,
+# under the hand, so the strike comes from below. y leans the swing out to the right at its lowest point, so the club skims the
+# ground and does not go through it. In the twirl the club stays raised, swept a little back (x over 360) and to the right (y)
+# by the turn; in the last third it swings down and out with the hand and stands up again at rest.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.071, v = [-12, 0, 0], ease = "ease_out" },
+  { t = 0.224, v = [84, -10, 0], ease = "smooth" },
+  { t = 0.294, v = [92, -12, 0], ease = "smooth" },
+  { t = 0.324, v = [112, -45, 0], ease = "ease_in" },
+  { t = 0.353, v = [170, -75, 0], ease = "linear" },
+  { t = 0.412, v = [315, 0, 0], ease = "linear" },
+  { t = 0.4943, v = [345, 0, 0], ease = "ease_out" },
+  { t = 0.588, v = [368, 24, 6], ease = "smooth" },
+  { t = 0.735, v = [376, 32, 0], ease = "smooth" },
+  { t = 0.853, v = [366, 58, -10], ease = "ease_in" },
+  { t = 0.941, v = [361, 18, -3], ease = "linear" },
+  { t = 1.000, v = [360, 0, 0], ease = "ease_out" },
+]
+
+# The free hand: a guard in front of the chest in the coil, thrown back as the counterweight of the strike, tucked in to the
+# chest through the twirl, and opened out as the club comes down.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.224, v = [1.5, 4, 4], ease = "smooth" },
+  { t = 0.294, v = [2, 5, 5], ease = "smooth" },
+  { t = 0.412, v = [-2, -5, -1], ease = "ease_in" },
+  { t = 0.588, v = [2.5, 3, 2.5], ease = "smooth" },
+  { t = 0.765, v = [2, 3.5, 2], ease = "smooth" },
+  { t = 0.900, v = [-2.5, 0, 1.5], ease = "smooth" },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The trunk. Coil: leans forward, drops the right shoulder and turns right. Strike: uncoils past the middle and leans back.
+# Twirl: leans away from the raised club, then bows a little with it as it comes down.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.224, v = [-10, 8, -32], ease = "smooth" },
+  { t = 0.294, v = [-14, 10, -38], ease = "smooth" },
+  { t = 0.412, v = [14, -6, 28], ease = "ease_in" },
+  { t = 0.4943, v = [18, -4, 26], ease = "ease_out" },
+  { t = 0.588, v = [8, -8, 12], ease = "linear" },
+  { t = 0.765, v = [2, -6, 4], ease = "linear" },
+  { t = 0.900, v = [-5, 4, 0], ease = "smooth" },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The crouch and the stretch: down in the coil, up through the strike and for as long as the club is up, a dip as it lands.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.224, v = [0, -0.5, -2], ease = "smooth" },
+  { t = 0.294, v = [0, -1, -2.6], ease = "smooth" },
+  { t = 0.412, v = [0, 1, 1.6], ease = "ease_in" },
+  { t = 0.588, v = [0, 0, 1.2], ease = "smooth" },
+  { t = 0.765, v = [0, 0, 0.8], ease = "smooth" },
+  { t = 0.918, v = [0, 0, -1.4], ease = "smooth" },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The head: chin down on the target in the coil, then up after the thrown enemy, then ahead of the turn.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.224, v = [-10, 0, 0], ease = "smooth" },
+  { t = 0.294, v = [-12, 0, 0], ease = "smooth" },
+  { t = 0.412, v = [16, 0, 0], ease = "ease_in" },
+  { t = 0.529, v = [22, 0, 8], ease = "ease_out" },
+  { t = 0.706, v = [6, 0, 20], ease = "smooth" },
+  { t = 0.882, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The whole figure. x: a lean into the hop, and back out of it. z: the twirl, one turn counter-clockwise seen from above, at a
+# slow start while the hit hangs (to 840 ms), then quick and steady, braked in the last part, 8 degrees past the turn and back.
+[[track]]
+part = "root"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.294, v = [0, 0, 0] },
+  { t = 0.382, v = [-9, 0, 0], ease = "ease_in" },
+  { t = 0.412, v = [-3, 0, 0], ease = "linear" },
+  { t = 0.49412, v = [6, 0, 38], ease = "linear" },
+  { t = 0.553, v = [0, 0, 76], ease = "linear" },
+  { t = 0.806, v = [0, 0, 324], ease = "linear" },
+  { t = 0.912, v = [0, 0, 368], ease = "ease_out" },
+  { t = 1.000, v = [0, 0, 360], ease = "smooth" },
+]
+
+[[marker]]
+t = 0.412
+name = "hit"

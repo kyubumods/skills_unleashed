@@ -1,0 +1,5 @@
+# Modules that run on every side, the server included: no kyubu call, no FFI (bundle_lua.py writes them to scripts/common.lua).
+logic.*
+lib.tuning
+lib.units
+lib.volume

@@ -1,0 +1,145 @@
+# Assassin: Shadow Strike, the cast. 2000 ms; the player stands still through it and may move once it ends. Every pose eases in
+# and out. A time below is a fraction of it:
+#   160 ms = 0.08 (the seal: both fists meet in front of the chest, the body dips)   440 ms = 0.22 (the weapon hand is up in front
+#   of and above the head, the other behind the back, the head looks up at the fist)   500 ms = 0.25 (`smoke`: the target is
+#   fixed, smoke rises there; the first clone)   500, 650, 800, 950 ms = 0.25, 0.325, 0.40, 0.475 (`clone`: a clone sets off)
+#   670, 820, 970, 1120 ms = 0.335, 0.41, 0.485, 0.56 (`hit`: a clone passes the target; each dash is 340 ms)
+#   1440 ms = 0.72 (the fist is down just below the chin, after the 1 s descent)   1640 ms = 0.82 (the fist turns shut, a lock,
+#   after the last hit)   1740 ms = 0.87 (the hands let go)   2000 ms = 1 (back at rest)
+# No borrowed pose: the game's pose 0 is the base and the tracks move it. The
+# weapons are hidden for the whole cast. The clones, the smoke, the ash at the feet and the hits are the script's, not the clip's.
+# The weapon hand is taken to be the right one, as for the other abilities.
+# No blend: every track starts and ends at rest.
+duration = 2000
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The weapon hand: in to the seal, then up to in front of and above the head; the slow descent (1 s, speeding up then slowing,
+# arcing forward round the face) to just below the chin; the lock eases it a little forward; home.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [-5.0, 3.9, 1.1], ease = "smooth" },
+  { t = 0.220, v = [-4.5, 4.6, 16.0], ease = "smooth" },
+  { t = 0.470, v = [-4.5, 7.9, 10.0], ease = "ease_in" },
+  { t = 0.720, v = [-4.5, 6.9, 3.1], ease = "ease_out" },
+  { t = 0.820, v = [-4.5, 8.0, 2.8], ease = "smooth" },
+  { t = 0.870, v = [-4.5, 8.0, 2.8] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The weapon fist: tipped in for the seal, upright as it is raised, turning in slowly as it comes down, a little more at the lock.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [-20, 0, 30], ease = "smooth" },
+  { t = 0.220, v = [-30, 0, 0], ease = "smooth" },
+  { t = 0.720, v = [10, 0, 25], ease = "smooth" },
+  { t = 0.820, v = [10, 0, 45], ease = "smooth" },
+  { t = 0.870, v = [10, 0, 45] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The other hand: in to the seal, then swept behind the back, where it stays until the end.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [5.0, 3.9, 1.1], ease = "smooth" },
+  { t = 0.220, v = [3.5, -6.6, -0.9], ease = "smooth" },
+  { t = 0.870, v = [3.5, -6.6, -0.9] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [-20, 0, -30], ease = "smooth" },
+  { t = 0.220, v = [50, 0, 0], ease = "smooth" },
+  { t = 0.870, v = [50, 0, 0] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The trunk: dips into the seal, opens up and back with the weapon shoulder forward as the hand rises, then leans slowly over
+# the target through the descent; a little further at the lock; upright again.
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [-8, 0, 0], ease = "smooth" },
+  { t = 0.220, v = [6, 0, 12], ease = "smooth" },
+  { t = 0.720, v = [-8, 0, 8], ease = "smooth" },
+  { t = 0.820, v = [-10, 0, 5], ease = "smooth" },
+  { t = 0.870, v = [-10, 0, 5] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The head: down into the seal, up at the raised fist, then slowly down to stare at the target, chin low.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.000, v = [0, 0, 0] },
+  { t = 0.080, v = [-10, 0, 0], ease = "smooth" },
+  { t = 0.220, v = [20, 0, -6], ease = "smooth" },
+  { t = 0.720, v = [-6, 0, -4], ease = "smooth" },
+  { t = 0.820, v = [-8, 0, -4], ease = "smooth" },
+  { t = 0.870, v = [-8, 0, -4] },
+  { t = 1.000, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[hide]]
+from = 0.0
+to = 1.0
+parts = ["weapons"]
+
+[[marker]]
+t = 0.25
+name = "smoke"
+
+[[marker]]
+t = 0.25
+name = "clone"
+
+[[marker]]
+t = 0.325
+name = "clone"
+
+[[marker]]
+t = 0.335
+name = "hit"
+
+[[marker]]
+t = 0.40
+name = "clone"
+
+[[marker]]
+t = 0.41
+name = "hit"
+
+[[marker]]
+t = 0.475
+name = "clone"
+
+[[marker]]
+t = 0.485
+name = "hit"
+
+[[marker]]
+t = 0.56
+name = "hit"

@@ -1,0 +1,147 @@
+# Water Mage: Chain of the Deep, the pulse. Not chargeable, and the player can walk while it plays, so the trunk only dips and springs and the feet are the game's.
+# The hands snap up in front of the face and stop there, pressed together and trembling, while the trunk sinks a little into them;
+# then they fling out to both sides, a little under the head, the fists turned outward until a weapon in them points away from the
+# body, slowing as they reach the end. The trunk springs up with the chest open and the head comes up. The fists shiver while the
+# pulse runs out, then all goes back to rest.
+# Weapon agnostic: only the fists are posed. In front of the face the fists' tops point up and lean in a little, so a staff or a wand
+# stands before the face and bracelets frame it; at the sides the tops point outward 18 degrees above the level, so a staff's butt
+# (its bottom 10 voxels under the hand) passes under the jaw and over the shoulder instead of through the head.
+# 1000 ms; a time below is a fraction of it:
+#   130 ms = 0.13 (the hands are in front of the face; the stand starts)   230 ms = 0.23 (end of the stand; the fling starts)
+#   250 ms = 0.25 (`cast`: the pulse leaves the feet)   340 ms = 0.34 (the hands are out at the sides)
+#   620 ms = 0.62 (end of the hold)   1000 ms = 1 (back at rest)
+# The shockwave, the wave of drops, the chains and the sound are the script's, not the clip's. No blend: every track starts and
+# ends at rest.
+duration = 1000
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The trunk: leans forward and sinks a little to meet the hands, sinks a little more through the stand, then springs up with the
+# chest open (leaned back 6 degrees) as the hands fling out, and eases back to rest.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [0, 0.3, -0.6], ease = "ease_out" },
+  { t = 0.23, v = [0, 0.4, -0.9], ease = "smooth" },
+  { t = 0.34, v = [0, -0.3, 0.9], ease = "ease_out" },
+  { t = 0.62, v = [0, -0.2, 0.6], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-4, 0, 0], ease = "ease_out" },
+  { t = 0.23, v = [-5, 0, 0], ease = "smooth" },
+  { t = 0.34, v = [6, 0, 0], ease = "ease_out" },
+  { t = 0.62, v = [4, 0, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The right hand: in front of the face (seen 3 right, 12.5 forward, 0.6 over the hub: at the mouth, so the eyes show over the
+# fists; solved through the trunk's lean), pressed 0.4 inward through the stand, then out to the side (seen 16 right, 2.5 forward,
+# 0.5 under the hub), drifting 0.6 further out in the hold.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-2.98, 10.03, 6.15], ease = "ease_out" },
+  { t = 0.23, v = [-3.38, 10.0, 6.68], ease = "smooth" },
+  { t = 0.34, v = [10.02, 0.63, 2.42], ease = "ease_out" },
+  { t = 0.62, v = [10.62, 0.55, 2.61], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The tremble of the stand (25 a second, small) and the shiver of the hold (12 a second, dying out by its end); the left hand's
+# tracks are the same.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin((t - 130) * 9) * 0.15 * smoothstep(120, 150, t) * (1 - smoothstep(210, 235, t)) + sin((t - 340) * 4.3) * 0.3 * smoothstep(330, 360, t) * (1 - smoothstep(420, 620, t))"]
+
+# Its angles: the top leans in 12 degrees and forward 6 in front of the face; at the side it points outward, 18 degrees over the level.
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-6, -12, 0], ease = "ease_out" },
+  { t = 0.23, v = [-7, -14, 0], ease = "smooth" },
+  { t = 0.34, v = [-6, 72, 0], ease = "ease_out" },
+  { t = 0.62, v = [-4, 74, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+expr = ["sin((t - 340) * 4.3) * 2.5 * smoothstep(330, 360, t) * (1 - smoothstep(420, 620, t))", "0", "0"]
+
+# The left hand: the right one's mirror.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [2.98, 10.03, 6.15], ease = "ease_out" },
+  { t = 0.23, v = [3.38, 10.0, 6.68], ease = "smooth" },
+  { t = 0.34, v = [-10.02, 0.63, 2.42], ease = "ease_out" },
+  { t = 0.62, v = [-10.62, 0.55, 2.61], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin((t - 130) * 9) * 0.15 * smoothstep(120, 150, t) * (1 - smoothstep(210, 235, t)) + sin((t - 340) * 4.3) * 0.3 * smoothstep(330, 360, t) * (1 - smoothstep(420, 620, t))"]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-6, 12, 0], ease = "ease_out" },
+  { t = 0.23, v = [-7, 14, 0], ease = "smooth" },
+  { t = 0.34, v = [-6, -72, 0], ease = "ease_out" },
+  { t = 0.62, v = [-4, -74, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+expr = ["sin((t - 340) * 4.3) * 2.5 * smoothstep(330, 360, t) * (1 - smoothstep(420, 620, t))", "0", "0"]
+
+# The head: a little down over the hands, then up 12 degrees as they fling out, easing back through the hold.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, 0, 0] },
+  { t = 0.13, v = [-3, 0, 0], ease = "ease_out" },
+  { t = 0.23, v = [-5, 0, 0], ease = "smooth" },
+  { t = 0.34, v = [12, 0, 0], ease = "ease_out" },
+  { t = 0.62, v = [5, 0, 0], ease = "smooth" },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[marker]]
+t = 0.25
+name = "cast"

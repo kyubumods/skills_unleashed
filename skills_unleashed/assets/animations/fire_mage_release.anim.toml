@@ -1,0 +1,137 @@
+# Fire Mage: Fire Circle, the release.
+# It starts from the charge clip's pose at the start of a lap (`fire_mage.anim.toml`, phase 0: the hands in front of their circle).
+# The hands gather up and the right fist cocks back; then the right arm whips down and forward until the fist points ahead and a
+# little down, at the target, while the left hand sweeps back and low behind the body and the trunk turns toward it (18 degrees, the
+# right shoulder forward). The head eases from the sky into the aim and stays straight: the rig keeps it level with the turn. The
+# fist kicks up once as the circle is cast and shivers while the arm holds the point; then all goes back to rest.
+# Weapon agnostic: the fist's top points at the target, so a staff or a wand in it points there with its tip, and a bare fist with
+# its bracelet thrusts at it; the point is held under the chin, so a bare fist does not hide the face.
+# 1000 ms; a time below is a fraction of it:
+#   100 ms = 0.10 (gathered: hands higher, the fist cocked back, the trunk wound 4 degrees the other way)
+#   220 ms = 0.22 (`cast`: the arm has whipped through, a little past the point; the target is marked here)
+#   320 ms = 0.32 (the fist's kick, up 15 degrees from the overshoot)   420 ms = 0.42 (settled on the point; the head is in the aim)
+#   620 ms = 0.62 (end of the hold)   1000 ms = 1 (back at rest)
+# The swirling points, their descent and the circle are the script's, not the clip's. No blend: the first keys are the charge's pose
+# and every track ends at rest.
+duration = 1000
+end = "hold"
+blend_in = 0
+blend_out = 0
+
+# The trunk: up a little more to gather, then a lunge forward and down into the cast, leaned forward and turned left (toward the
+# hand that goes back); it settles back from the overshoot and comes up to rest.
+[[track]]
+part = "body"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [0, -0.4, 0.9] },
+  { t = 0.10, v = [0, -0.6, 1.6], ease = "smooth" },
+  { t = 0.22, v = [0, 1.0, -1.5], ease = "ease_in" },
+  { t = 0.32, v = [0, 0.8, -1.1], ease = "ease_out" },
+  { t = 0.62, v = [0, 0.8, -1.2] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "body"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [6.5, 0, 0] },
+  { t = 0.10, v = [10, 0, -4], ease = "smooth" },
+  { t = 0.22, v = [-9, 0, 21], ease = "ease_in" },
+  { t = 0.32, v = [-7, 0, 18], ease = "ease_out" },
+  { t = 0.62, v = [-7, 0, 18] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The right hand: from over the head to in front of the chest under the chin, a little right (seen 4 right, 10.5 forward, 0.5 under
+# the hub, solved through the trunk's lean and turn). Its angles point the fist's top (a weapon's tip) 8 degrees under the level,
+# straight ahead: x -91.5 lays it forward and z -18 takes back the trunk's turn. It whips 1 voxel past the point and dips 8.5
+# degrees, kicks up, settles.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [-2.38, 7.1, 20.01] },
+  { t = 0.10, v = [-2.4, 5.01, 20.63], ease = "smooth" },
+  { t = 0.22, v = [1.88, 6.28, 5.85], ease = "ease_in" },
+  { t = 0.32, v = [0.98, 5.48, 6.41], ease = "ease_out" },
+  { t = 0.42, v = [1.07, 5.85, 5.85], ease = "smooth" },
+  { t = 0.62, v = [1.07, 6.05, 5.85] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The shiver of the held point: 12 a second, from the cast, dying out by the end of the hold.
+[[track]]
+part = "hand_r"
+channel = "pos"
+mode = "add"
+expr = ["0", "0", "sin((t - 220) * 4.3) * 0.35 * smoothstep(210, 240, t) * (1 - smoothstep(320, 620, t))"]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [-18, 0, 0] },
+  { t = 0.10, v = [2, 0, 4], ease = "smooth" },
+  { t = 0.22, v = [-100, 0, -18], ease = "ease_in" },
+  { t = 0.32, v = [-85, 0, -18], ease = "ease_out" },
+  { t = 0.42, v = [-91.5, 0, -18], ease = "smooth" },
+  { t = 0.62, v = [-91.5, 0, -18] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_r"
+channel = "rot"
+mode = "add"
+expr = ["sin((t - 220) * 4.3) * 2.5 * smoothstep(210, 240, t) * (1 - smoothstep(320, 620, t))", "0", "0"]
+
+# The left hand: up with the right to gather, then swept back and down behind the left hip (seen 7.5 left, 6 behind, 5.5 under the
+# hub), its palm turned back.
+[[track]]
+part = "hand_l"
+channel = "pos"
+mode = "add"
+keys = [
+  { t = 0.00, v = [2.38, 7.1, 20.01] },
+  { t = 0.10, v = [1.98, 4.49, 20.72], ease = "smooth" },
+  { t = 0.22, v = [-3.3, -6.3, -1.0], ease = "ease_in" },
+  { t = 0.32, v = [-3.01, -5.59, -0.59], ease = "ease_out" },
+  { t = 0.62, v = [-3.01, -5.59, -0.59] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[track]]
+part = "hand_l"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [-18, 0, 0] },
+  { t = 0.10, v = [-10, 0, 0], ease = "smooth" },
+  { t = 0.22, v = [58, 0, 20], ease = "ease_in" },
+  { t = 0.32, v = [50, 0, 15], ease = "ease_out" },
+  { t = 0.62, v = [50, 0, 15] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+# The head: a last look up as the hands gather, then it eases down into the aim (8 degrees under the level) slower than the arm.
+[[track]]
+part = "head"
+channel = "rot"
+mode = "add"
+keys = [
+  { t = 0.00, v = [28, 0, 0] },
+  { t = 0.10, v = [34, 0, 0], ease = "smooth" },
+  { t = 0.42, v = [-8, 0, 0], ease = "smooth" },
+  { t = 0.62, v = [-8, 0, 0] },
+  { t = 1.00, v = [0, 0, 0], ease = "smooth" },
+]
+
+[[marker]]
+t = 0.22
+name = "cast"
