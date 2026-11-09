@@ -6,8 +6,9 @@
 --
 -- The name goes in a std::string of the game's library: 16 bytes of text in place, then the size and the capacity 15. A longer
 -- name would need the string's heap form, which was not tried, so names are 15 characters at most.
--- A sound has no place: it is heard at the volume asked for (times the game's sound option), as the player's own. Other players
--- do not hear it.
+-- A sound has no place: play() is heard at the volume asked for (times the game's sound option), as the player's own. A sound of
+-- something in the world (another player's ability, a burst away from the player) goes through play_at(), which makes it quieter
+-- with its distance from the local player and silent from RANGE on.
 local ffi = require("ffi")
 
 local M = {}
@@ -57,6 +58,27 @@ function M.play(name, volume, pitch)
   local option = ffi.cast("int32_t*", gc + GC_VOLUME)[0]
   play_handle(ffi.cast("void*", engine), handle, option * (volume or 1) * PERCENT, 0, pitch or 1, 0)
   return true
+end
+
+M.RANGE = 40.0                    -- blocks: a placed sound is silent from here on
+
+-- The share of the volume heard `d` blocks away: 1 at the listener, falling in a straight line to 0 at `range` (default RANGE).
+function M.fade(d, range)
+  local f = 1 - d / (range or M.RANGE)
+  if f < 0 then return 0 end
+  return f
+end
+
+-- Plays `name` from `at` ({x, y, z}, blocks) as heard at `ear` ({x, y, z}: the local player), quieter with the distance. Without
+-- `ear` it is played as the player's own. Returns what play() returns, or false and "far" when nothing would be heard.
+function M.play_at(name, volume, at, ear, pitch, range)
+  local v = volume or 1
+  if ear then
+    local dx, dy, dz = at.x - ear.x, at.y - ear.y, at.z - ear.z
+    v = v * M.fade(math.sqrt(dx * dx + dy * dy + dz * dz), range)
+  end
+  if v <= 0 then return false, "far" end
+  return M.play(name, v, pitch)
 end
 
 return M

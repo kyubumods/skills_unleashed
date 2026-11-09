@@ -13,11 +13,13 @@
 --   every step (combat.every, also after the ability is over): the clones move; a clone that hits something plays its weapon's hit sound once; every hostile creature a clone's box touches (the player's size plus half a block each way, swept
 --              along the step, through walls) takes 10 times the damage stat from that clone, once, with no stun and no knockback.
 -- The shadows are drawn whether or not the player is stealthed (lib/shadow hooks both of render's passes).
--- A joined client draws the clones and applies no hit (lib/combat is_joined): the damage is the server's (server/assassin.lua). At
+-- A joined client draws the clones and plays their hit sounds, and applies no hit (lib/combat is_joined): the damage is the
+-- server's (server/assassin.lua). At
 -- the `smoke` marker it sends `strike { target, from }` to the server (lib/ability_channel).
 -- Another player's strike (a bystander): the server tells every joined client the strikes it took (`strike` on
 -- skills_unleashed:world, with the run's time then); this client draws those clones on that player's own model (lib/shadow's owner),
--- with the smoke, puffs, specks and hit sounds, on its own clock from the event. Its own strikes it drew already.
+-- with the cast sound at that player, the smoke, puffs, specks and hit sounds, on its own clock from the event. Its own strikes it
+-- drew already.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -204,14 +206,16 @@ end
 
 local function strike(step, strikes)
   if #strikes == 0 then return end
+  for _, s in ipairs(strikes) do
+    if not s.clone.sounded then   -- one hit sound per clone, however many creatures it struck (a joined client too)
+      s.clone.sounded = true
+      combat.play_sound(block.hit_sounds[cast.clip] or block.hit_sound, s.e.x, s.e.y, s.e.z, block.hit_volume)
+    end
+  end
   if combat.is_joined(step.world) or not combat.can_hit(step.world) then return end
   local pid = combat.id(step.player)
   local damage = logic.damage(block, combat.damage_stat(step.player))
   for _, s in ipairs(strikes) do
-    if not s.clone.sounded then   -- one hit sound per clone, however many creatures it struck
-      s.clone.sounded = true
-      combat.play_sound(block.hit_sounds[cast.clip] or block.hit_sound, s.e.x, s.e.y, s.e.z, block.hit_volume)
-    end
     combat.hit(pid, s.e.addr, damage, 0)
     combat.flash(s.e.addr)                    -- the blink at once, as the game shows a hit
     kyubu.info(("skills_unleashed: assassin: clone %d struck creature %d for %.0f"):format(s.clone.index, s.e.id, damage))
@@ -305,6 +309,8 @@ local function on_strike_event(step, ev)
     { x = fx_, y = fy }, { half_width = combat.half_width(owner), height = combat.height(owner) }, clip)
   logic.start_smoke(c)
   rules_on()
+  local ox, oy, oz = combat.position(owner)
+  combat.play_sound(block.cast_sound, ox, oy, oz, block.cast_volume)   -- the swirl, which their client played at its start
   watched[ev.owner] = { cast = c, world = step.world, ms = ev.ms }
   kyubu.info(("skills_unleashed: assassin: watched strike of player %d at %.1f, %.1f, %.1f (clones: %s, %d ms into its run)")
     :format(ev.owner, c.target.x, c.target.y, c.target.z, clip, ev.ms))

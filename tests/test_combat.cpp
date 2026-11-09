@@ -112,6 +112,41 @@ TEST_CASE("combat: a hit is one kyubu.game.hit with the two creatures' handles, 
     CHECK(vm.truthy("next(kyubu.hooks) == nil"));      // nothing hooked for a hit
 }
 
+TEST_CASE("combat: hit_through adds what the target's resistance (armor) takes off, so the game's subtraction leaves the damage") {
+    // covers: the 2026-11-09 two-PC play: the Fire Circle's ticks (about 3) were taken whole by a level-45 monster's resistance
+    Vm vm;
+    vm.run(kFakeWorld);
+    vm.run(R"LUA(
+      res = ffi.cast("float (__fastcall *)(void*)", function(c) return 7.5 end)
+      arm = ffi.cast("float (__fastcall *)(void*)", function(c) return 2.0 end)
+      kyubu.symbols["cube::Creature::resistance"] = tonumber(ffi.cast("uint32_t", res))
+      kyubu.symbols["cube::Creature::armor"] = tonumber(ffi.cast("uint32_t", arm))
+      assert(combat.init())
+      t = creature(42, 2, 3, 4, true, 50)
+      combat.hit_through(1, t, 3, 0, true)
+      combat.hit_through(1, t, 3, 0)
+      combat.hit(1, t, 3, 0, true)
+    )LUA");
+    REQUIRE(vm.num("#loader_hits") == 3.0);
+    CHECK(vm.num("loader_hits[1].damage") == doctest::Approx(10.5));
+    CHECK(vm.truthy("loader_hits[1].magic == true"));
+    CHECK(vm.num("loader_hits[2].damage") == doctest::Approx(5.0));
+    CHECK(vm.num("loader_hits[3].damage") == doctest::Approx(3.0));   // a plain hit is left as it is
+}
+
+TEST_CASE("combat: without the armor and resistance symbols hit_through is a plain hit, said once") {
+    Vm vm;
+    vm.run(kFakeWorld);
+    vm.run(R"LUA(
+      combat.init()
+      t = creature(42, 2, 3, 4, true, 50)
+      combat.hit_through(1, t, 3, 0, true)
+      combat.hit_through(1, t, 3, 0, true)
+    )LUA");
+    CHECK(vm.num("loader_hits[1].damage") == doctest::Approx(3.0));
+    CHECK(vm.num("kyubu.log_count('warn')") == 1.0);
+}
+
 TEST_CASE("combat: a sound is play_sound(controller, id, position in world units, volume 1, pitch 1) and is skipped without symbols") {
     Vm vm;
     vm.run(kFakeWorld);

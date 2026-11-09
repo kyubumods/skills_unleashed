@@ -63,7 +63,7 @@
   <speech key="description:AbilityFlashBomb">
     [Flash Bomb $stress]
     %
-    You backflip and throw a smoke bomb at the ground. It hurts enemies close by and stuns the one it hits. The blast flips you up and hides you from every enemy until it wears off or you deal damage.
+    You backflip and throw a smoke bomb at the ground. It hurts enemies close by and stuns the one it hits, or the nearest one. The blast flips you up and hides you from every enemy until it wears off or you deal damage.
   </speech>
 
   <speech key="details:AbilityFlashBomb">

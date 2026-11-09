@@ -363,7 +363,7 @@ TEST_CASE("bystander: another player's strike is drawn on that player's model, f
     CHECK(vm.truthy("shown['clone1'] == nil"));                       // none as Q's own
     vm.run("for _ = 1, 60 do world_event(W) end");
     CHECK(vm.num("#hits") == 0.0);
-    CHECK(vm.num("sounds") == 4.0);                                   // each clone's hit sound once (A and B touched)
+    CHECK(vm.num("sounds") == 5.0);                                   // the cast's swirl, then each clone's hit sound once
     CHECK(vm.truthy("logged('the last watched clone of player 1 has faded')"));
     CHECK(vm.num("shadow.count()") == 0.0);
     CHECK(vm.truthy("next(select(4, require('skills_unleashed.abilities.assassin')._state())) == nil"));

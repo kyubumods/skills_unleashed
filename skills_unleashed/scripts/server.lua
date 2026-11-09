@@ -137,6 +137,10 @@ package.preload["skills_unleashed.lib.bow"] = function(...)
 -- would be a hitch at each cast. Nothing here detours a function that a worker thread calls: Lua that waits for one of the game's
 -- locks keeps the Lua state from the main thread, which holds that lock (a detour of save_character froze the game).
 -- A callback that fails is caught and logged once.
+-- Another player's arrow (a joined client watching them): their client made it kind 1 with no skill flag, which this client would
+-- draw as a spell (a fireball) and end with a spell's explosion. A projectile of that shape whose shooter `handlers.watched(id)`
+-- names is drawn as the mod's arrow, flies through creatures (its hits are the server's: none is made here) and ends as an arrow;
+-- handlers.on_watched_flight and on_watched_surface give the looks.
 -- Not proved in the game: the lock (read statically), death with the bow in the hand, the charge's hush (read
 -- statically), a joined client.
 local ffi = require("ffi")
@@ -256,6 +260,11 @@ local function is_marked(at)
   return u8(at + I_TYPE) == TYPE_WEAPON and u8(at + I_SUB) == SUB_BOW and i32(at + I_MARK) == MARK
 end
 M.is_marked = is_marked
+
+-- True when creature `c` (an address: any player, as this client sees it) holds a bow of the mod in either weapon slot.
+function M.holds(c)
+  return c ~= 0 and (is_marked(c + SLOT_RIGHT) or is_marked(c + SLOT_LEFT))
+end
 
 -- Makes the item at `at` a bow of the mod: an item that is a weapon keeps everything but its sub_type and the mark; an empty
 -- slot becomes a level 1 bow.
@@ -489,6 +498,21 @@ local function is_ours(proj)
   return p ~= 0 and i64(proj + PR_OWNER) == i64(p + C_ID)
 end
 
+-- Another player's arrows in flight here: projectile address -> { seen_ms = the clock at its last update }.
+local others = {}
+local clock_ms = 0
+
+-- True for another player's arrow of the mod (see the head of this file).
+local function is_watched(proj)
+  if proj == 0 or not handlers or not handlers.watched then return false end
+  if i32(proj + PR_KIND) ~= KIND_STRAIGHT or u8(proj + PR_SKILL) ~= 0 then return false end
+  local id = i64(proj + PR_OWNER)
+  local p = local_player()
+  if p ~= 0 and id == i64(p + C_ID) then return false end
+  return handlers.watched(id) == true
+end
+M._is_watched = is_watched                     -- for the unit test
+
 local function proj_pos(proj)
   return units.to_blocks(i64(proj + PR_POS)), units.to_blocks(i64(proj + PR_POS + 8)), units.to_blocks(i64(proj + PR_POS + 16))
 end
@@ -503,6 +527,15 @@ end
 function M._flight_reset()
   arrow, current, drawn, released = nil, nil, nil, 0
   arrow_slot = nil
+  others = {}
+end
+
+-- Every World step: another player's arrow not updated for a second is gone (the game removed it with no surface).
+function M.poll_watched(dt_ms)
+  clock_ms = clock_ms + dt_ms
+  for proj, o in pairs(others) do
+    if clock_ms - o.seen_ms > 1000 then others[proj] = nil end
+  end
 end
 
 local function on_bar(ctx)
@@ -549,6 +582,15 @@ end
 local function on_update(ctx)
   local proj = ctx.edi
   current = nil
+  if proj ~= 0 and not is_ours(proj) and is_watched(proj) then
+    local first = others[proj] == nil
+    others[proj] = { seen_ms = clock_ms }
+    if handlers.on_watched_flight then
+      local x, y, z = proj_pos(proj)
+      handlers.on_watched_flight(proj, i64(proj + PR_OWNER), first, x, y, z)
+    end
+    return
+  end
   if proj == 0 or not is_ours(proj) or arrow.ended then return end
   current = proj
   arrow.age = i32(proj + PR_AGE)
@@ -556,10 +598,17 @@ local function on_update(ctx)
 end
 
 local function on_stop(ctx)
-  if current and ctx.edi == current then put_u8(ctx.ebp - STOP_FLAG, 0) end
+  if (current and ctx.edi == current) or (ctx.edi ~= 0 and others[ctx.edi]) then put_u8(ctx.ebp - STOP_FLAG, 0) end
 end
 
 local function on_surface(ctx)
+  local proj = ctx.edi
+  if proj ~= 0 and others[proj] and proj ~= current then
+    put_i32(proj + PR_KIND, KIND_ARROW)          -- an arrow's end here too: no spell explosion
+    others[proj] = nil
+    if handlers.on_watched_surface then handlers.on_watched_surface(proj, proj_pos(proj)) end
+    return
+  end
   if not current or ctx.edi ~= current then return end
   put_i32(current + PR_KIND, KIND_ARROW)         -- the game ends it as its own arrow: a puff, no explosion, removal
   local x, y, z = proj_pos(current)
@@ -572,6 +621,7 @@ end
 -- Where `handlers.server_hits(world)` says the server makes the arrow's hits (a joined client),
 -- the arrow makes none here: the call is skipped, so no hit goes to the server, and it is logged.
 local function on_hit_creature(next, this, target, attacker, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, proj, a14)
+  if proj ~= 0 and proj ~= current and others[proj] then return 0 end   -- another player's arrow: its hits are the server's
   if current and arrow and proj == current and target ~= 0 then
     local id = i64(target + C_ID)
     if arrow.hit[id] then return 0 end
@@ -588,7 +638,8 @@ M._on_hit_creature = on_hit_creature            -- for the unit test
 local function on_draw_kind(ctx)
   end_draw()                                     -- a draw whose end was not seen
   local proj = ctx.esi
-  if proj == 0 or not arrow or not is_ours(proj) then return end
+  if proj == 0 then return end
+  if not (arrow and is_ours(proj)) and not (others[proj] and is_watched(proj)) then return end
   put_i32(proj + PR_KIND, KIND_ARROW)
   drawn = proj
 end
@@ -612,7 +663,7 @@ end
 local function holds_bow(record)
   if record == 0 then return false end
   local c = u32(record)
-  return c ~= 0 and (is_marked(c + SLOT_RIGHT) or is_marked(c + SLOT_LEFT))
+  return M.holds(c)
 end
 
 -- draw_creature_quiver_left_site / _right_site: the game has taken the quiver model (EAX) it draws on the back of a creature that
@@ -768,6 +819,7 @@ local function warn_once(key, text)
 end
 
 local damage_stat_fn = nil                   -- the attacker's damage stat, __fastcall(cube::Creature*) -> float
+local protection_fn = {}                     -- [true] cube::Creature::resistance, [false] cube::Creature::armor: thiscall () -> float
 local play_sound_fn = nil                    -- play_sound(GameController*, id, int64 pos[3]*, volume, pitch), thiscall, ret 0x10
 local controller_at = nil                    -- the address of the global that holds the GameController*
 local map_slot_fn = nil                    -- creature_map_slot, thiscall(std::map*, const int64_t* id) -> float* (inserts a missing id)
@@ -784,6 +836,10 @@ end
 function M.init()
   local d = kyubu.symbol("creature_damage")
   if d then damage_stat_fn = ffi.cast("float(__fastcall*)(void*)", d) end
+  local r = kyubu.symbol("cube::Creature::resistance")
+  if r then protection_fn[true] = ffi.cast("float(__fastcall*)(void*)", r) end
+  local a = kyubu.symbol("cube::Creature::armor")
+  if a then protection_fn[false] = ffi.cast("float(__fastcall*)(void*)", a) end
   local m = kyubu.symbol("creature_map_slot")
   if m then map_slot_fn = ffi.cast("float*(__fastcall*)(void*, void*, const int64_t*)", m) end
   local e = kyubu.symbol("creature_map_erase")
@@ -1031,6 +1087,25 @@ function M.hit(attacker_id, target, damage, stun_ms, magic, knock)
   local landed, err = g.hit(ah, th, { damage = damage, stun_ms = stun_ms or 0, magic = magic == true, knock = knock })
   if landed == nil then warn_once("hit:" .. tostring(err), "kyubu.game.hit refused: " .. tostring(err)) end
   return landed == true
+end
+
+-- What the game's hit takes off creature `target`'s damage (hitCreature subtracts it and stops at 0): its resistance when `magic`,
+-- else its armor. 0 when the game's function has no symbol (logged once).
+function M.protection(target, magic)
+  local fn = protection_fn[magic == true]
+  if not fn then
+    warn_once("protection", "cube::Creature::armor or ::resistance has no symbol: small hits may do nothing")
+    return 0
+  end
+  local v = fn(ffi.cast("void*", target))
+  if v ~= v or v < 0 then return 0 end
+  return v
+end
+
+-- A hit (as M.hit) that the target's armor (resistance when `magic`) does not cut: that part is added first, so the game's
+-- subtraction leaves `damage`. For the many small hits of a burning ground, which armor would take whole at a high level.
+function M.hit_through(attacker_id, target, damage, stun_ms, magic, knock)
+  return M.hit(attacker_id, target, damage + M.protection(target, magic), stun_ms, magic, knock)
 end
 
 -- True when the loader flags creature `c` (an address) unstoppable (creature_set_flags): a boss that no
@@ -2707,7 +2782,11 @@ local function hurt(step, entry)
   local owner = combat.find(step.world, entry.owner)
   local list = logic.targets(block, entry.c, combat.enemies(step.world, owner))
   for _, e in ipairs(list) do
-    combat.hit(entry.owner, e.addr, entry.damage, 0, true)
+    if entry.c.hits == 0 then
+      kyubu.info(("skills_unleashed: server: fire_mage: the first tick on creature %d: %.1f damage, its resistance %.1f added")
+        :format(e.id, entry.damage, combat.protection(e.addr, true)))
+    end
+    combat.hit_through(entry.owner, e.addr, entry.damage, 0, true)   -- as the client: resistance would take a tick whole
     entry.c.hits = entry.c.hits + 1
   end
 end

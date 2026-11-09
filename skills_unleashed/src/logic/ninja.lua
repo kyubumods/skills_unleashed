@@ -221,7 +221,8 @@ local function to_body(e, x, y, z)
 end
 
 -- Who the blast hurts: every enemy whose hitbox is within `splash_radius` of the impact, nearest first, each { c, d, stun_ms }. The
--- enemy the bomb struck is always in it, and is the only one stunned.
+-- enemy the bomb struck is always in it, and is the only one stunned; a bomb that burst on the ground (or in the air) stuns the
+-- nearest enemy in the splash instead.
 function M.victims(T, impact, enemies)
   local out = {}
   local struck = impact.struck
@@ -238,6 +239,7 @@ function M.victims(T, impact, enemies)
     if p.d ~= q.d then return p.d < q.d end
     return (p.c.id or 0) < (q.c.id or 0)
   end)
+  if struck == nil and out[1] then out[1].stun_ms = T.stun_ms end
   return out
 end
 

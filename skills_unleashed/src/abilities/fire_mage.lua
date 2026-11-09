@@ -158,7 +158,7 @@ local function hurt(step, c)
   local attacker = combat.id(step.player)
   local amount = logic.damage(block, combat.damage_stat(step.player))
   for _, e in ipairs(list) do
-    combat.hit(attacker, e.addr, amount, 0, true)      -- a spell: the target's resistance, not its armor
+    combat.hit_through(attacker, e.addr, amount, 0, true)   -- a spell; the tick is too small for any resistance to cut
     combat.flash(e.addr)                      -- the blink at once, as the game shows a hit
     c.hits = c.hits + 1
   end

@@ -14,6 +14,8 @@
 -- ability-walk-speed), and lib/sites on_walk keeps it whole from on_start until the game's lock after on_end is over.
 -- A joined client applies nothing: the monsters are the server's (lib/combat is_joined). It draws its ring at
 -- once, and the chains of each snare when the server tells of it (lib/snare on_shown), caster and bystanders alike.
+-- Another player's pulse (the watch callbacks): at their clip's `cast` marker (or cast_ms and a slack) the ring leaves their feet
+-- with the cast sound, quieter with the distance; it catches nothing here.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -159,6 +161,46 @@ local function tick(step)
   end
 end
 
+-- ---- another player's pulse (the watch callbacks, a joined client) ----------------------------------------------------------
+
+local setup                       -- below: the hooks and the step callback, set up once
+
+local function watch_cast(step, owner_id)
+  local player = combat.find(step.world, owner_id)
+  if not player then return end
+  local feet = feet_of(player)
+  if not feet then return end
+  local ear = nil
+  if step.player then
+    local x, y, z = combat.position(step.player)
+    ear = { x = x, y = y, z = z }
+  end
+  sound.play_at(block.cast_sound, block.cast_volume, feet, ear)
+  local def = logic.pulse_def(block, logic.new_pulse(state, feet, 1))
+  def.pos = world_pos(unpack(def.pos))
+  if fx.pulse(def) == 0 then kyubu.warn("skills_unleashed: water_mage: EMTweaks refused a watched pulse: the ring is not drawn") end
+  kyubu.info(("skills_unleashed: water_mage: watched pulse of player %d from %.1f, %.1f, %.1f"):format(owner_id, feet.x, feet.y,
+    feet.z))
+end
+
+local function watch_start(ctx)
+  setup()
+  local info = ctx.creature and ctx.creature.get and ctx.creature:get()
+  ctx.state.owner = info and info.id or nil
+  ctx.state.cast = false
+end
+
+local function watch_step(ctx)
+  local st = ctx.state
+  if st.cast or not st.owner then return end
+  local due = (ctx.elapsed_ms or 0) >= block.cast_ms + block.watch_cast_slack_ms
+  for _, name in ipairs(ctx:marker()) do if name == logic.MARKER_CAST then due = true end end
+  if not due then return end
+  st.cast = true
+  local id = st.owner
+  combat.defer(function(step) watch_cast(step, id) end)
+end
+
 -- ---- the skill tooltip -----------------------------------------------------------------------------------------------------
 
 local function setup_tooltip()
@@ -188,7 +230,7 @@ end
 
 -- ---- the definition --------------------------------------------------------------------------------------------------------
 
-local function setup()
+function setup()
   if ready then return end
   ready = true
   combat.init()
@@ -242,6 +284,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
+    watch = { on_start = watch_start, on_step = watch_step },
   }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   kyubu.on("lifecycle.game_ready", setup_tooltip)
@@ -249,7 +292,7 @@ function M.define()
   kyubu.on("lifecycle.world_exit", forget)
 end
 
-M._tick, M._cast, M._keep_walk = tick, cast, keep_walk
+M._tick, M._cast, M._keep_walk, M._watch_cast = tick, cast, keep_walk, watch_cast
 M._state = function() return state, chains end   -- for the unit test
 
 return M

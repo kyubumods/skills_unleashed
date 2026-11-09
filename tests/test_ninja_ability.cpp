@@ -128,11 +128,12 @@ TEST_CASE("ninja ability: a cast from the ground: the jump, the throw, the bomb 
     CHECK(vm.num("jumped") == doctest::Approx(13.0));
     CHECK(vm.truthy("thrown"));
     CHECK(vm.num("ghosts_at_throw") == 1.0);                                    // the bomb's ghost
-    // the blast: A and B within 2 blocks of the burst under the player, C not; the ground burst stuns no one
+    // the blast: A and B within 2 blocks of the burst under the player, C not; the ground burst stuns the nearest only
     CHECK(vm.num("#hits") == 2.0);
     CHECK(vm.truthy("hits[1].target == 20 and hits[2].target == 21"));
     CHECK(vm.num("hits[1].damage") == 20.0);
-    CHECK(vm.num("hits[1].stun") == 0.0);
+    CHECK(vm.num("hits[1].stun") == 5000.0);
+    CHECK(vm.num("hits[2].stun") == 0.0);
     CHECK(vm.num("hits[1].attacker") == 1.0);
     CHECK(vm.str("sounds[1].name") == "nj_bang.wav");
     CHECK(vm.num("#bursts") == vm.num("#T.smoke"));

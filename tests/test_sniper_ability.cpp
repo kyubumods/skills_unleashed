@@ -1100,3 +1100,89 @@ TEST_CASE("sniper ability: a death ends the bow at once without a World step; a 
     vm.run("died = 0; for _, l in ipairs(kyubu.logs) do if l.text:find('gone (died)', 1, true) then died = died + 1 end end");
     CHECK(vm.num("died") == 1.0);
 }
+
+TEST_CASE("sniper ability: a bystander sees another player's halo, spawn sound, charge and arrow of light, and makes no hit") {
+    // covers: the watch callbacks and lib/bow's watched arrow; the 2026-11-09 two-PC play: a bystander saw a bare bow and a fireball
+    Vm vm;
+    scene(vm);
+    vm.run(R"LUA(
+      R = big_creature(2, 20, 0, 0, false, 100)                         -- another player, 20 blocks east of this client's P
+      J = world_of({ P, R, E1, E2 }, P, true)
+      wctx = { rank = 1, state = {}, elapsed_ms = 0, _m = {}, creature = { get = function() return { id = 2 } end } }
+      function wctx:marker() local m = self._m; self._m = {}; return m end
+      function watch(markers) wctx._m = markers or {}; def.watch.on_step(wctx); world_event(J) end
+      def.watch.on_start(wctx)
+      world_event(J)
+      halo_rays = #beam_calls("spawn")
+      watch({ "spawn" })
+      spawn_sounds = own_count("bol_spawn.wav")
+      for _, s in ipairs(own_sounds) do if s.name == "bol_spawn.wav" then spawn_volume = s.volume end end
+      watch({ "catch" })
+      -- the bow comes with R's equipment: a marked bow in the right hand; R charges it
+      RS = R + B.slot_right
+      put8(RS, 3); put8(RS + 1, 6); put32(RS + B.item_mark, bow.MARK)
+      wctx.reason = "done"; def.watch.on_end(wctx); world_event(J)
+      put8(R + B.mode, 25); putf(R + B.charged, 0.5)
+      charge0 = #bursts_of(T.charge_particles.scale)
+      for _ = 1, 15 do world_event(J) end
+      charge_bursts = #bursts_of(T.charge_particles.scale) - charge0
+      charge_sounds = 0
+      for _, s in ipairs(own_sounds) do if s.name:find("bol_charge") then charge_sounds = charge_sounds + 1 end end
+      -- R's arrow arrives: kind 1, no skill flag, R's id
+      put8(R + B.mode, 23)
+      arrow_b = ffi.new("uint8_t[0x100]"); A = addr_of(arrow_b)
+      ffi.cast("int64_t*", A)[0] = 2; put32(A + B.proj_kind, 1)
+      ffi.cast("int64_t*", A + B.proj_pos)[0] = 21 * 65536
+      update = kyubu.hooks["cube::World::projectileUpdateSite"]
+      waves0 = count_of("wave")
+      update({ edi = A })
+      release_sounds = own_count("bol_release.wav")
+      waves = count_of("wave") - waves0
+      ffi.cast("int64_t*", A + B.proj_pos + 8)[0] = 3 * 65536
+      update({ edi = A })
+      swirls = #bursts_of(T.swirl.scale)
+      -- it goes through a creature here: no hit is made, the stop is cleared
+      passed = 0
+      r = kyubu.fhooks["cube::World::hitCreature"].fn(function() passed = passed + 1; return 1 end,
+        ffi.cast("void*", J), E1, R, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, A, 1)
+      put8(frame - B.stop_flag, 1)
+      kyubu.hooks["cube::World::projectileStopSite"]({ edi = A, ebp = frame })
+      stopped = u8(frame - B.stop_flag)
+      -- drawn as the mod's arrow, not as a spell
+      kyubu.fhooks["ModelLoader::itemModel"].fn(function() return ffi.cast("void*", 1) end, ffi.cast("void*", 0x10), ffi.cast("void*", SLOT))
+      kyubu.hooks["cube::GameController::projectileDrawKindSite"]({ esi = A })
+      kind_drawn = i32(A + B.proj_kind)
+      mc = { esi = A, eax = 0xA0 }; kyubu.hooks["cube::GameController::projectileArrowModelSite"](mc)
+      kyubu.hooks["cube::GameController::projectileDrawEndSite"]({})
+      kind_back = i32(A + B.proj_kind)
+      -- it ends as an arrow: no spell's explosion, the puff
+      puffs0 = #bursts_of(T.puff.scale)
+      kyubu.hooks["cube::World::projectileSurfaceSite"]({ edi = A })
+      kind_end, puffs = i32(A + B.proj_kind), #bursts_of(T.puff.scale) - puffs0
+      -- the bow is gone from R's hand: after the linger R's straight projectiles are the game's again
+      put8(RS + 1, 8); put32(RS + B.item_mark, 0)
+      for _ = 1, T.watch_arrow_linger_ms / 20 + 2 do world_event(J) end
+      watched_after = sniper._watched(2)
+      seen_after = next((sniper._seen())) ~= nil
+    )LUA");
+    CHECK(vm.num("halo_rays") == vm.num("T.halo_rays"));
+    CHECK(vm.num("spawn_sounds") == 1.0);
+    CHECK(vm.num("spawn_volume") == doctest::Approx(0.5).epsilon(0.05));        // 20 blocks away: half of RANGE 40
+    CHECK(vm.num("charge_bursts") > 0.0);
+    CHECK(vm.num("charge_sounds") >= 1.0);
+    CHECK(vm.num("release_sounds") == 1.0);
+    CHECK(vm.num("waves") >= 1.0);
+    CHECK(vm.num("swirls") > 0.0);
+    CHECK(vm.num("r") == 0.0);
+    CHECK(vm.num("passed") == 0.0);
+    CHECK(vm.num("stopped") == 0.0);
+    CHECK(vm.num("kind_drawn") == 0.0);
+    CHECK(vm.num("mc.eax") == double(0xB01700 + 2572));
+    CHECK(vm.num("kind_back") == 1.0);
+    CHECK(vm.num("kind_end") == 0.0);
+    CHECK(vm.num("puffs") == 1.0);
+    CHECK_FALSE(vm.truthy("watched_after"));
+    CHECK_FALSE(vm.truthy("seen_after"));
+    CHECK(vm.truthy("kyubu.logs and (function() for _, l in ipairs(kyubu.logs) do if l.text:find('watched arrow of player 2', 1, true) then return true end end return false end)()"));
+    CHECK(vm.num("#loader_hits") == 0.0);
+}

@@ -6,9 +6,10 @@
 --              (a marker not told in time is acted on at the clip's own time: logic.cast_step)
 --   every step (combat.every), also after the ability is over:
 --              the bomb flies (EMTweaks' ghost of the mod's bomb model) until it strikes an enemy or the ground; the blast: every enemy
---              within 2 blocks is hit with 2 times the damage stat, the one struck stunned; the bang (the mod's own sound), the flash (a
---              ghost) and the smoke (the game's particles); the player is kicked away from it into the bounce clip (the mode time is
---              rewound so the clip plays from its start, as the Fire Mage's release); then true stealth.
+--              within 2 blocks is hit with 2 times the damage stat, the one struck (or the nearest) stunned; the bang (the mod's own
+--              sound, quieter far away), the flash (a ghost) and the smoke (the game's particles); the player is kicked away from it
+--              into the bounce clip (the mode time is rewound so the clip plays from its start, as the Fire Mage's release); then
+--              true stealth.
 --              True stealth, each step while it lasts: the threat for the player of every enemy that holds one is written below 0
 --              (never the target), the player is kept out of the monsters' first-target scan (lib/sites on_scan) and the game's
 --              stealth is held full (the pale stealth look). It ends when its time runs out, the game's own stealth then draining
@@ -147,14 +148,15 @@ local function flash_step(dt)
   end
 end
 
-local function burst_look(impact)
+-- `ear`: the local player (the bang is quieter with its distance), nil: heard as the player's own.
+local function burst_look(impact, ear)
   local pos = world_pos(impact.x, impact.y, impact.z)
   if models.flash then
     local id = fx.ghost({ cub = models.flash, pos = pos, voxel = block.flash_voxel })
     if id ~= 0 then flashes[#flashes + 1] = { ghost = id, left = block.flash_ms } end
   end
   for _, def in ipairs(block.smoke) do fx.burst(def, pos) end
-  sound.play(block.bang_sound, block.bang_volume)
+  sound.play_at(block.bang_sound, block.bang_volume, impact, ear and place_of(ear) or nil)
 end
 
 -- ---- true stealth --------------------------------------------------------------------------------------------------------
@@ -253,7 +255,7 @@ local function on_watch_event(step, ev)
     if not finite(ev.x) or not finite(ev.y) or not finite(ev.z) then return end
     load_models()
     unwatch(id)
-    burst_look({ x = ev.x, y = ev.y, z = ev.z })
+    burst_look({ x = ev.x, y = ev.y, z = ev.z }, step.player)
     kyubu.info(("skills_unleashed: ninja: watched burst of player %d at %.1f, %.1f, %.1f"):format(id, ev.x, ev.y, ev.z))
   elseif ev.kind == logic.EVENT_STEALTH_ON then
     if not finite(ev.ms) or ev.ms <= 0 then return end
@@ -302,7 +304,7 @@ local function blast(step, impact, enemies)
     local pid = combat.id(player)
     for _, v in ipairs(victims) do combat.hit(pid, v.c.addr, damage, v.stun_ms) end
   end
-  burst_look(impact)
+  burst_look(impact, player)
   local vx, vy, vz = logic.blast_push(block, place_of(player), impact)
   combat.launch(player, vx, vy, vz)
   logic.stealth_start(block, state, state.cast.rank)

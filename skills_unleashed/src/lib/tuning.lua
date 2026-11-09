@@ -172,6 +172,7 @@ M.blocks.sniper = {
   damage_mult_full = 21.0,         -- at a full charge (charged mp 1)
   arrow_speed = 1.0,               -- times the game's own arrow (100 blocks a second); a faster one can skip past a near creature
   arrow_life_ms = 5500,            -- the game removes an arrow at 5 s: after this the mod stops waiting for its end
+  watch_arrow_linger_ms = 1500,    -- a bystander: a straight arrow of another player is the mod's until this long after their bow went
   -- The server's arrow: the client's own shoot packet, checked, then flown by the server World's projectile step.
   shot_range_slack = 6,            -- blocks: the packet's start may be this far from the server's copy of the player
   shot_cone_deg = 45,              -- degrees, on the ground plan: the packet's heading against the server's aim from the start
@@ -542,6 +543,7 @@ M.blocks.water_mage = {
   max_rank = 255,
   clip = "skills_unleashed:water_mage",
   cast_ms = 250,                   -- the cast on the server: the clip's `cast` marker (the server reads no clip)
+  watch_cast_slack_ms = 150,       -- a bystander: another player's ring is drawn by cast_ms plus this when no `cast` marker was told
   -- the pulse (emtweaks:pulse); it leaves the feet on the clip's `cast` marker
   pulse_radius = 11.0,             -- blocks
   pulse_start = 0.215,             -- blocks at the spawn: 2.5 voxels of the pulse's own size, as EMTweaks has it
@@ -599,7 +601,7 @@ M.blocks.ninja = {
   -- the blast
   splash_radius = 2.0,             -- every hostile creature within 2 blocks of the impact
   damage_mult = 2.0,               -- times the player's damage stat
-  stun_ms = 5000,                  -- the creature the bomb struck only
+  stun_ms = 5000,                  -- the creature the bomb struck only (on the ground: the nearest in the splash)
   blast_speed = 24.0,              -- blocks/s away from the impact, the player only: about 10 blocks of height
   -- true stealth: threat -1 each step on every enemy that holds the player, the scan cut, the game's stealth held at 1.0 (probe
   -- ninja-scan-skip); at its end those entries are erased
@@ -612,8 +614,8 @@ M.blocks.ninja = {
                                    -- raised since (the creature the player hit, its alerted allies at 0.5) stays
   watch_stealth_slack_ms = 1000,   -- a bystander ends another player's stealth look this long after the server's `ms` when
                                    -- no `stealth_off` came (a lost message)
-  -- the bang: the mod's own sound (lib/sound; built by sounds-src/make_ninja_sounds.py), heard as the player's own, not placed
-  -- at the burst
+  -- the bang: the mod's own sound (lib/sound; built by sounds-src/make_ninja_sounds.py), quieter with its distance from the
+  -- listener (lib/sound play_at)
   bang_sound = "nj_bang.wav",
   bang_volume = 1.0,
   -- the cast's clock: the clips' markers, and when to act if a marker is not told (the air clip is bound a step after the start)

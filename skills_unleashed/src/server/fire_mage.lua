@@ -46,7 +46,11 @@ local function hurt(step, entry)
   local owner = combat.find(step.world, entry.owner)
   local list = logic.targets(block, entry.c, combat.enemies(step.world, owner))
   for _, e in ipairs(list) do
-    combat.hit(entry.owner, e.addr, entry.damage, 0, true)
+    if entry.c.hits == 0 then
+      kyubu.info(("skills_unleashed: server: fire_mage: the first tick on creature %d: %.1f damage, its resistance %.1f added")
+        :format(e.id, entry.damage, combat.protection(e.addr, true)))
+    end
+    combat.hit_through(entry.owner, e.addr, entry.damage, 0, true)   -- as the client: resistance would take a tick whole
     entry.c.hits = entry.c.hits + 1
   end
 end

@@ -447,3 +447,41 @@ TEST_CASE("water mage ability: a creature already snared (by a trap) is passed o
     CHECK(vm.truthy("others"));
     CHECK(vm.num("made") == 1.0);                                  // only the second creature got chains
 }
+
+TEST_CASE("water mage ability: a bystander sees another player's ring leave their feet at their cast, hears it quieter, and snares nothing") {
+    // covers: the watch callbacks; the 2026-11-09 two-PC play: the bystander saw no wave
+    Vm vm;
+    vm.run(kFakeWorld);
+    vm.run(kCast);
+    vm.run(R"LUA(
+      other = big(2, 20, 0, 10.1, 2.0)
+      ffi.cast("uint8_t*", other + combat.offsets.hostile)[0] = 0
+      J = make_world({ other, near_a }, true)
+      wctx = { rank = 1, state = {}, elapsed_ms = 0, _m = {}, creature = { get = function() return { id = 2 } end } }
+      function wctx:marker() local m = self._m; self._m = {}; return m end
+      function watch(ms, markers) wctx.elapsed_ms, wctx._m = ms, markers or {}; def.watch.on_step(wctx); world_event(J) end
+      def.watch.on_start(wctx)
+      watch(100)
+      before = #pulses
+      watch(240, { "cast" })
+      after = #pulses
+      watch(900)
+      for _ = 1, 60 do world_event(J) end
+      again = #pulses
+      snared = snare.is_snared(20)
+      -- a run whose marker is not told: the ring by cast_ms and the slack
+      w2 = { rank = 1, state = {}, elapsed_ms = 0, _m = {}, creature = wctx.creature, marker = wctx.marker }
+      def.watch.on_start(w2)
+      w2.elapsed_ms = T.cast_ms + T.watch_cast_slack_ms; def.watch.on_step(w2); world_event(J)
+      late = #pulses
+    )LUA");
+    CHECK(vm.num("before") == 0.0);
+    REQUIRE(vm.num("after") == 1.0);
+    CHECK(vm.num("pulses[1].pos[1]") == doctest::Approx(20.0 * 65536));
+    CHECK(vm.str("sounds[1].id") == "wm_cast.wav");
+    CHECK(vm.num("sounds[1].v") == doctest::Approx(vm.num("T.cast_volume * 0.5")).epsilon(0.05));
+    CHECK(vm.num("again") == 1.0);
+    CHECK_FALSE(vm.truthy("snared"));
+    CHECK(vm.num("late") == 2.0);
+    CHECK(vm.truthy("kyubu.logs and (function() for _, l in ipairs(kyubu.logs) do if l.text:find('watched pulse of player 2', 1, true) then return true end end return false end)()"));
+}

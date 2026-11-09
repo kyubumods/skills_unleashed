@@ -23,6 +23,7 @@
 --
 -- In single-player the arrow's hits are the owner's. On a joined client the arrow still flies and is drawn (its shoot packet is the
 -- server's input) but makes no hit: the server flies its checked copy and makes them (server/sniper.lua).
+-- A bystander rebuilds another player's bow from their run and their equipment ("another player's bow" below).
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -49,12 +50,15 @@ local state = logic.new_state()
 local owner = nil                 -- the player creature the state belongs to (an address)
 local number = nil                -- the ability's number, for the cooldown map
 local pending = {}                -- what the callbacks noted since the last step: { kind =, ... } in order
-local last_arrow = nil            -- where the arrow was at its last step, {x, y, z} in blocks
+local own_flight = { last = nil, phase = 0, pulse_ms = 0 }   -- the own arrow's look: where it was at its last step ({x, y, z}
+                                  -- in blocks), the helix of the swirl (radians at the arrow), the time to its next pulse ring
+local seen = {}                   -- another player's id -> what this client shows of their bow (entry_of)
+local watched_flights = {}        -- another player's arrow (its address) -> its look, as own_flight, and age_ms
+local watch_world, watch_ear = nil, nil   -- the World of the last step and this client's player's place then
+local setup, unsee, watch_tick    -- below
 local steer_ms = 0                -- lib/fx steers the charge's and the trail's particles while this is above 0
 local RULE_CHARGE, RULE_TRAIL, RULE_MOTES = "sniper.charge", "sniper.trail", "sniper.motes"
 local RULE_SWIRL, RULE_PUFF = "sniper.swirl", "sniper.puff"
-local swirl_phase = 0            -- the helix of the swirl, in radians at the arrow
-local pulse_ms = 0               -- the time to the next pulse ring of the arrow
 local ready = false
 local slow_from = nil             -- where the slow left the player at the last step of the summoning, {x, y} in blocks
 local watch = false               -- a bow was given in this world: the frame guard looks after the player until the world is left
@@ -117,57 +121,64 @@ local function ghost_off()
   ghost = nil
 end
 
--- The halo: from the press a slow white ring over the bow and the rays down from it, which turn.
--- `fading`: the fade after the take, which takes the place of what is alive (EMTweaks cannot fade a ring or a ray it was given).
-local function halo_spawn(fading)
+-- The halo: from the press a slow white ring over the bow and the rays down from it, which turn. A halo is a table { centre
+-- (blocks), age_ms, ring (id), rays = { ids }, fade_ms (nil until the fade) }: the player's own is `halo`, a watched player's in
+-- their entry of `seen`.
+-- A fading one takes the place of what is alive (EMTweaks cannot fade a ring or a ray it was given).
+local function halo_make(centre, age_ms, fade_ms)
   local t = block
-  halo.ring = fx.shockwave(logic.halo_ring_def(t, world_pos(unpack(halo.centre)), halo.age_ms, fading))
-  halo.rays = {}
+  local fading = fade_ms ~= nil
+  local h = { centre = centre, age_ms = age_ms, fade_ms = fade_ms, rays = {} }
+  h.ring = fx.shockwave(logic.halo_ring_def(t, world_pos(unpack(centre)), age_ms, fading))
   for k = 1, t.halo_rays do
-    local start, dir, length = logic.halo_ray(t, halo.centre, halo.age_ms, k)
-    halo.rays[k] = fx.beam(logic.halo_ray_def(t, world_pos(unpack(start)), dir, length, fading))
+    local start, dir, length = logic.halo_ray(t, centre, age_ms, k)
+    h.rays[k] = fx.beam(logic.halo_ray_def(t, world_pos(unpack(start)), dir, length, fading))
   end
+  return h
+end
+
+local function halo_drop(h)
+  if not h then return end
+  fx.shockwave_cancel(h.ring)
+  for _, id in ipairs(h.rays) do fx.beam_cancel(id) end
+end
+
+-- The take, or the summoning's end: the ring and the rays fade out where they are. Returns the halo that stands now.
+local function halo_faded(h)
+  if not h or h.fade_ms then return h end
+  halo_drop(h)
+  return halo_make(h.centre, h.age_ms, block.halo_fade_ms)
+end
+
+-- One step of a halo: the rays turn. Returns the halo, or nil once its fade is over.
+local function halo_step(h, dt)
+  if not h then return nil end
+  local t = block
+  h.age_ms = h.age_ms + dt
+  if h.fade_ms then
+    h.fade_ms = h.fade_ms - dt
+    if h.fade_ms <= 0 then return nil end
+  end
+  for k, id in ipairs(h.rays) do
+    local start, dir, length = logic.halo_ray(t, h.centre, h.age_ms, k)
+    fx.beam_move(id, world_pos(unpack(start)), dir, length)
+  end
+  return h
 end
 
 local function halo_cancel()
-  if not halo then return end
-  fx.shockwave_cancel(halo.ring)
-  for _, id in ipairs(halo.rays) do fx.beam_cancel(id) end
+  halo_drop(halo)
   halo = nil
 end
 
 local function halo_on(player)
   halo_cancel()
-  halo = { centre = logic.halo_centre(block, place_of(player), facing_of(player)), age_ms = 0 }
-  halo_spawn(false)
+  halo = halo_make(logic.halo_centre(block, place_of(player), facing_of(player)), 0)
 end
 
--- The take, or the summoning's end: the ring and the rays fade out where they are.
-local function halo_fade()
-  if not halo or halo.fade_ms then return end
-  local age, centre = halo.age_ms, halo.centre
-  halo_cancel()
-  halo = { centre = centre, age_ms = age, fade_ms = block.halo_fade_ms }
-  halo_spawn(true)
-end
+local function halo_fade() halo = halo_faded(halo) end
 
--- Every step: the rays turn; a faded halo is let go.
-local function keep_halo(step)
-  if not halo then return end
-  local t = block
-  halo.age_ms = halo.age_ms + step.dt
-  if halo.fade_ms then
-    halo.fade_ms = halo.fade_ms - step.dt
-    if halo.fade_ms <= 0 then
-      halo = nil
-      return
-    end
-  end
-  for k, id in ipairs(halo.rays) do
-    local start, dir, length = logic.halo_ray(t, halo.centre, halo.age_ms, k)
-    fx.beam_move(id, world_pos(unpack(start)), dir, length)
-  end
-end
+local function keep_halo(step) halo = halo_step(halo, step.dt) end
 
 -- No burst here: it did not fit; the motes are already falling, the ring and the rays come later. The bow
 -- starts to fade in, see-through, where the hands will hold it.
@@ -250,7 +261,9 @@ local function forget()
   fx.rule(RULE_SWIRL, nil)
   fx.rule(RULE_PUFF, nil)
   fx.rule(RULE_MOTES, nil)
-  last_arrow, steer_ms = nil, 0
+  own_flight.last, steer_ms = nil, 0
+  for id in pairs(seen) do unsee(id) end
+  watched_flights = {}
   owner = nil
   slow_from, watch, repair_ms = nil, false, 0
   ghost_off()                       -- a ghost has no life of its own: the mod that made it ends it
@@ -366,7 +379,8 @@ local function tick(step)
   run_pending(step)
   keep_halo(step)
   glow_step(step)
-  pulse_ms = pulse_ms - step.dt
+  own_flight.pulse_ms = own_flight.pulse_ms - step.dt
+  watch_tick(step)
   bow.poll(step.dt, block.arrow_life_ms)
   if not logic.active(state) then
     keep_steering(step)
@@ -442,38 +456,199 @@ local function on_arrow(creature, charge, sx, sy, sz)
   local x, y = p.x + facing.x * t.wave_forward, p.y + facing.y * t.wave_forward
   fx.shockwave(logic.wave_def(t, world_pos(x, y, p.z + t.bow_height), facing))
   sound.play(t.release_sound, t.release_volume)
-  last_arrow, swirl_phase, pulse_ms = nil, 0, block.pulse_every_ms
+  own_flight.last, own_flight.phase, own_flight.pulse_ms = nil, 0, block.pulse_every_ms
   local dx, dy, dz = arrow_direction(creature, { x = sx, y = sy, z = sz })
   kyubu.info(("skills_unleashed: sniper: the arrow: charge %.2f, damage %.1f (%.1f times the damage stat), %s")
     :format(state.charge, damage, logic.damage_mult(t, state.charge), dx and "a near aim, levelled" or "the game's aim"))
   return damage, t.arrow_speed, dx, dy, dz
 end
 
-local function on_flight(x, y, z)
+-- One World step of an arrow's look `fl` (own_flight, or a watched arrow's): the swirl behind it and a pulse ring now and then.
+local function flight_look(fl, x, y, z)
   local t = block
   local now = { x = x, y = y, z = z }
   steer_ms = t.steer_linger_ms          -- no plain trail: the swirl is the trail
   fx.rule(RULE_SWIRL, logic.swirl_rule(t))
   local swirl = logic.particles(t, "swirl")
   local points
-  points, swirl_phase = logic.swirl(t, last_arrow, now, swirl_phase)
+  points, fl.phase = logic.swirl(t, fl.last, now, fl.phase)
   for _, p in ipairs(points) do
     swirl.accel = p.vel
     fx.burst(swirl, world_pos(unpack(p.pos)))
   end
-  if pulse_ms <= 0 then
-    pulse_ms = pulse_ms + t.pulse_every_ms
-    local dir = logic.flight_dir(last_arrow, now)
+  if fl.pulse_ms <= 0 then
+    fl.pulse_ms = fl.pulse_ms + t.pulse_every_ms
+    local dir = logic.flight_dir(fl.last, now)
     if dir then fx.shockwave(logic.pulse_def(t, world_pos(x, y, z), dir)) end
   end
-  last_arrow = now
+  fl.last = now
 end
 
-local function on_surface(x, y, z)
+local function on_flight(x, y, z) flight_look(own_flight, x, y, z) end
+
+local function puff(x, y, z)
   fx.rule(RULE_PUFF, logic.puff_rule(block))
   steer_ms = block.steer_linger_ms
   fx.burst(logic.particles(block, "puff"), world_pos(x, y, z))
-  last_arrow = nil
+end
+
+local function on_surface(x, y, z)
+  puff(x, y, z)
+  own_flight.last = nil
+end
+
+-- ---- another player's bow (a joined client watching them) ------------------------------------------------------------------
+-- Their run (the watch callbacks) starts the halo over them, the spawn sound at their clip's `spawn` and the halo's fade at
+-- `catch`. While this client sees the bow in their hand (lib/bow holds: the marked item comes with their equipment): its light,
+-- and while they charge it the charge's particles and sound, which follow their charged mp. Their arrow (lib/bow's watched
+-- arrow): the release's wave and sound where it starts, its swirl and pulse rings, the puff where it ends. Every sound is
+-- quieter with its distance from this client's player (lib/sound play_at). Nothing here touches a creature.
+
+local function ear_of(step)
+  return step.player and place_of(step.player) or nil
+end
+
+-- The entry of player `id`, made on first use: { halo, run (their run is on), held_ms (since the bow was last seen in their hand),
+-- ring_ms, sound_ms, light (a key of glow.light_set) }.
+local function entry_of(id)
+  local e = seen[id]
+  if not e then
+    e = { run = false, held_ms = nil, ring_ms = 0, sound_ms = 0, light = {} }
+    seen[id] = e
+  end
+  return e
+end
+
+function unsee(id)
+  local e = seen[id]
+  if not e then return end
+  halo_drop(e.halo)
+  glow.light_clear(e.light)
+  seen[id] = nil
+end
+
+-- lib/bow: true while player `id`'s projectiles of the arrow's shape are the mod's arrow (their bow is in the hand, or was a
+-- moment ago: the shot and the bow's end come in two messages).
+local function watched(id)
+  local e = seen[id]
+  return e ~= nil and e.held_ms ~= nil and e.held_ms <= block.watch_arrow_linger_ms
+end
+
+local function watched_charge(step, e, player)
+  local t = block
+  local x, y, z = logic.bow_point(t, place_of(player), facing_of(player))
+  fx.rule(RULE_CHARGE, logic.charge_rule(t, x, y, z))
+  steer_ms = t.steer_linger_ms
+  if logic.due(e, "ring_ms", step.dt, t.charge_particles_every_ms) then
+    fx.sphere(logic.particles(t, "charge_particles"), { x, y, z }, t.charge_particles_count, t.charge_radius_min, t.charge_radius_max)
+  end
+  if logic.due(e, "sound_ms", step.dt, t.charge_sound_every_ms) then
+    sound.play_at(logic.charge_sound(t, bow.charged(player)), t.charge_volume, { x = x, y = y, z = z }, ear_of(step))
+  end
+end
+
+-- Every World step: each watched player's halo, bow light and charge; an entry with no run, no bow and no halo goes.
+function watch_tick(step)
+  watch_world, watch_ear = step.world, ear_of(step)
+  for id, e in pairs(seen) do
+    local player = combat.find(step.world, id)
+    if not player then
+      unsee(id)
+    else
+      e.halo = halo_step(e.halo, step.dt)
+      if bow.holds(player) then
+        e.held_ms = 0
+        local x, y, z = logic.bow_point(block, place_of(player), facing_of(player))
+        glow.light_set(e.light, logic.bow_light(block, { x = x, y = y, z = z }))
+        e.charging = bow.is_charging(player)
+        if e.charging then watched_charge(step, e, player) end
+      else
+        glow.light_clear(e.light)
+        if e.held_ms then e.held_ms = e.held_ms + step.dt end
+      end
+      if not e.run and not e.halo and (e.held_ms == nil or e.held_ms > block.watch_arrow_linger_ms) then unsee(id) end
+    end
+  end
+  for proj, fl in pairs(watched_flights) do
+    fl.pulse_ms = fl.pulse_ms - step.dt
+    fl.age_ms = fl.age_ms + step.dt
+    if fl.age_ms > block.arrow_life_ms then watched_flights[proj] = nil end
+  end
+  bow.poll_watched(step.dt)
+end
+
+-- lib/bow: a watched arrow's World step; `first` at the first one seen, where it leaves the bow.
+local function on_watched_flight(proj, owner_id, first, x, y, z)
+  local fl = watched_flights[proj]
+  if first or not fl then
+    local t = block
+    fl = { last = nil, phase = 0, pulse_ms = t.pulse_every_ms, age_ms = 0 }
+    watched_flights[proj] = fl
+    local player = watch_world and combat.find(watch_world, owner_id) or nil
+    if player then
+      local facing = facing_of(player)
+      local p = place_of(player)
+      fx.shockwave(logic.wave_def(t, world_pos(p.x + facing.x * t.wave_forward, p.y + facing.y * t.wave_forward,
+        p.z + t.bow_height), facing))
+    end
+    sound.play_at(t.release_sound, t.release_volume, { x = x, y = y, z = z }, watch_ear)
+    kyubu.info(("skills_unleashed: sniper: watched arrow of player %d from %.1f, %.1f, %.1f"):format(owner_id, x, y, z))
+  end
+  flight_look(fl, x, y, z)
+end
+
+local function on_watched_surface(proj, x, y, z)
+  watched_flights[proj] = nil
+  puff(x, y, z)
+end
+
+local function watch_start(ctx)
+  setup()
+  local info = ctx.creature and ctx.creature.get and ctx.creature:get()
+  local id = info and info.id or nil
+  ctx.state.owner = id
+  if not id then return end
+  combat.defer(function(step)
+    local player = combat.find(step.world, id)
+    if not player then return end
+    local e = entry_of(id)
+    e.run = true
+    halo_drop(e.halo)
+    e.halo = halo_make(logic.halo_centre(block, place_of(player), facing_of(player)), 0)
+    kyubu.info(("skills_unleashed: sniper: watched summoning of player %d"):format(id))
+  end)
+end
+
+local function watch_markers(ctx)
+  local id = ctx.state.owner
+  if not id then return end
+  for _, name in ipairs(ctx:marker()) do
+    if name == logic.MARKER_SPAWN then
+      combat.defer(function(step)
+        local player = combat.find(step.world, id)
+        if player then sound.play_at(block.spawn_sound, block.spawn_volume, place_of(player), ear_of(step)) end
+      end)
+    elseif name == logic.MARKER_CATCH then
+      combat.defer(function()
+        local e = seen[id]
+        if e then e.halo = halo_faded(e.halo) end
+      end)
+    end
+  end
+end
+
+local function watch_step(ctx) watch_markers(ctx) end
+
+local function watch_end(ctx)
+  watch_markers(ctx)
+  local id = ctx.state.owner
+  if not id then return end
+  combat.defer(function()
+    local e = seen[id]
+    if not e then return end
+    e.run = false
+    e.halo = halo_faded(e.halo)
+  end)
 end
 
 -- ---- the skill tooltip ---------------------------------------------------------------------------------------------------
@@ -493,7 +668,7 @@ end
 
 -- ---- the definition ------------------------------------------------------------------------------------------------------
 
-local function setup()
+function setup()
   if ready then return end
   ready = true
   combat.init()
@@ -501,7 +676,8 @@ local function setup()
   combat.every(tick)
   bow.set_bow_model(BOW_MODEL_ID)
   bow.set_arrow_model(ARROW_MODEL_ID)
-  bow.install({ armed = armed, on_arrow = on_arrow, on_flight = on_flight, on_surface = on_surface, server_hits = combat.is_joined })
+  bow.install({ armed = armed, on_arrow = on_arrow, on_flight = on_flight, on_surface = on_surface, server_hits = combat.is_joined,
+    watched = watched, on_watched_flight = on_watched_flight, on_watched_surface = on_watched_surface })
 end
 
 -- Before the game loads its models: the arrow of the mod is a white copy of the game's own (the bow is a file of the mod's).
@@ -549,6 +725,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
+    watch = { on_start = watch_start, on_step = watch_step, on_end = watch_end },
   }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   if kyubu.model and kyubu.model.add then
@@ -565,5 +742,8 @@ function M.define()
   kyubu.on("lifecycle.world_exit", forget)
   kyubu.on("frame.begin", guard_frame)
 end
+
+M._seen = function() return seen, watched_flights end   -- for the unit test
+M._watched = watched
 
 return M

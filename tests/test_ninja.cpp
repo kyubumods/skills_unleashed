@@ -133,7 +133,7 @@ TEST_CASE("ninja: a bomb that never lands bursts when its time runs out") {
     CHECK(vm.num("steps * 20") == vm.num("T.bomb_max_ms"));
 }
 
-TEST_CASE("ninja: the blast hurts every enemy within 2 blocks and stuns only the one struck") {
+TEST_CASE("ninja: the blast hurts every enemy within 2 blocks and stuns only the one struck, or the nearest on the ground") {
     Vm vm;
     vm.run(kScene);
     vm.run(R"LUA(
@@ -152,7 +152,7 @@ TEST_CASE("ninja: the blast hurts every enemy within 2 blocks and stuns only the
     CHECK(vm.str("table.concat(ids, ',')") == "1,2,4,3");
     CHECK(vm.str("table.concat(stuns, ',')") == "5000,0,0,0");
     CHECK(vm.num("#g") == 1.0);
-    CHECK(vm.num("g[1].stun_ms") == 0.0);                   // a ground burst stuns no one
+    CHECK(vm.num("g[1].stun_ms") == 5000.0);                // a ground burst stuns the nearest enemy in the splash
     CHECK(vm.num("logic.damage(T, 12)") == 24.0);
 }
 

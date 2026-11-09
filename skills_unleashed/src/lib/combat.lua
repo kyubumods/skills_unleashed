@@ -66,6 +66,7 @@ local function warn_once(key, text)
 end
 
 local damage_stat_fn = nil                   -- the attacker's damage stat, __fastcall(cube::Creature*) -> float
+local protection_fn = {}                     -- [true] cube::Creature::resistance, [false] cube::Creature::armor: thiscall () -> float
 local play_sound_fn = nil                    -- play_sound(GameController*, id, int64 pos[3]*, volume, pitch), thiscall, ret 0x10
 local controller_at = nil                    -- the address of the global that holds the GameController*
 local map_slot_fn = nil                    -- creature_map_slot, thiscall(std::map*, const int64_t* id) -> float* (inserts a missing id)
@@ -82,6 +83,10 @@ end
 function M.init()
   local d = kyubu.symbol("creature_damage")
   if d then damage_stat_fn = ffi.cast("float(__fastcall*)(void*)", d) end
+  local r = kyubu.symbol("cube::Creature::resistance")
+  if r then protection_fn[true] = ffi.cast("float(__fastcall*)(void*)", r) end
+  local a = kyubu.symbol("cube::Creature::armor")
+  if a then protection_fn[false] = ffi.cast("float(__fastcall*)(void*)", a) end
   local m = kyubu.symbol("creature_map_slot")
   if m then map_slot_fn = ffi.cast("float*(__fastcall*)(void*, void*, const int64_t*)", m) end
   local e = kyubu.symbol("creature_map_erase")
@@ -329,6 +334,25 @@ function M.hit(attacker_id, target, damage, stun_ms, magic, knock)
   local landed, err = g.hit(ah, th, { damage = damage, stun_ms = stun_ms or 0, magic = magic == true, knock = knock })
   if landed == nil then warn_once("hit:" .. tostring(err), "kyubu.game.hit refused: " .. tostring(err)) end
   return landed == true
+end
+
+-- What the game's hit takes off creature `target`'s damage (hitCreature subtracts it and stops at 0): its resistance when `magic`,
+-- else its armor. 0 when the game's function has no symbol (logged once).
+function M.protection(target, magic)
+  local fn = protection_fn[magic == true]
+  if not fn then
+    warn_once("protection", "cube::Creature::armor or ::resistance has no symbol: small hits may do nothing")
+    return 0
+  end
+  local v = fn(ffi.cast("void*", target))
+  if v ~= v or v < 0 then return 0 end
+  return v
+end
+
+-- A hit (as M.hit) that the target's armor (resistance when `magic`) does not cut: that part is added first, so the game's
+-- subtraction leaves `damage`. For the many small hits of a burning ground, which armor would take whole at a high level.
+function M.hit_through(attacker_id, target, damage, stun_ms, magic, knock)
+  return M.hit(attacker_id, target, damage + M.protection(target, magic), stun_ms, magic, knock)
 end
 
 -- True when the loader flags creature `c` (an address) unstoppable (creature_set_flags): a boss that no

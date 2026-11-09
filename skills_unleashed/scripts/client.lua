@@ -18,11 +18,13 @@ package.preload["skills_unleashed.abilities.assassin"] = function(...)
 --   every step (combat.every, also after the ability is over): the clones move; a clone that hits something plays its weapon's hit sound once; every hostile creature a clone's box touches (the player's size plus half a block each way, swept
 --              along the step, through walls) takes 10 times the damage stat from that clone, once, with no stun and no knockback.
 -- The shadows are drawn whether or not the player is stealthed (lib/shadow hooks both of render's passes).
--- A joined client draws the clones and applies no hit (lib/combat is_joined): the damage is the server's (server/assassin.lua). At
+-- A joined client draws the clones and plays their hit sounds, and applies no hit (lib/combat is_joined): the damage is the
+-- server's (server/assassin.lua). At
 -- the `smoke` marker it sends `strike { target, from }` to the server (lib/ability_channel).
 -- Another player's strike (a bystander): the server tells every joined client the strikes it took (`strike` on
 -- skills_unleashed:world, with the run's time then); this client draws those clones on that player's own model (lib/shadow's owner),
--- with the smoke, puffs, specks and hit sounds, on its own clock from the event. Its own strikes it drew already.
+-- with the cast sound at that player, the smoke, puffs, specks and hit sounds, on its own clock from the event. Its own strikes it
+-- drew already.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -209,14 +211,16 @@ end
 
 local function strike(step, strikes)
   if #strikes == 0 then return end
+  for _, s in ipairs(strikes) do
+    if not s.clone.sounded then   -- one hit sound per clone, however many creatures it struck (a joined client too)
+      s.clone.sounded = true
+      combat.play_sound(block.hit_sounds[cast.clip] or block.hit_sound, s.e.x, s.e.y, s.e.z, block.hit_volume)
+    end
+  end
   if combat.is_joined(step.world) or not combat.can_hit(step.world) then return end
   local pid = combat.id(step.player)
   local damage = logic.damage(block, combat.damage_stat(step.player))
   for _, s in ipairs(strikes) do
-    if not s.clone.sounded then   -- one hit sound per clone, however many creatures it struck
-      s.clone.sounded = true
-      combat.play_sound(block.hit_sounds[cast.clip] or block.hit_sound, s.e.x, s.e.y, s.e.z, block.hit_volume)
-    end
     combat.hit(pid, s.e.addr, damage, 0)
     combat.flash(s.e.addr)                    -- the blink at once, as the game shows a hit
     kyubu.info(("skills_unleashed: assassin: clone %d struck creature %d for %.0f"):format(s.clone.index, s.e.id, damage))
@@ -310,6 +314,8 @@ local function on_strike_event(step, ev)
     { x = fx_, y = fy }, { half_width = combat.half_width(owner), height = combat.height(owner) }, clip)
   logic.start_smoke(c)
   rules_on()
+  local ox, oy, oz = combat.position(owner)
+  combat.play_sound(block.cast_sound, ox, oy, oz, block.cast_volume)   -- the swirl, which their client played at its start
   watched[ev.owner] = { cast = c, world = step.world, ms = ev.ms }
   kyubu.info(("skills_unleashed: assassin: watched strike of player %d at %.1f, %.1f, %.1f (clones: %s, %d ms into its run)")
     :format(ev.owner, c.target.x, c.target.y, c.target.z, clip, ev.ms))
@@ -850,7 +856,7 @@ local function hurt(step, c)
   local attacker = combat.id(step.player)
   local amount = logic.damage(block, combat.damage_stat(step.player))
   for _, e in ipairs(list) do
-    combat.hit(attacker, e.addr, amount, 0, true)      -- a spell: the target's resistance, not its armor
+    combat.hit_through(attacker, e.addr, amount, 0, true)   -- a spell; the tick is too small for any resistance to cut
     combat.flash(e.addr)                      -- the blink at once, as the game shows a hit
     c.hits = c.hits + 1
   end
@@ -1457,9 +1463,10 @@ package.preload["skills_unleashed.abilities.ninja"] = function(...)
 --              (a marker not told in time is acted on at the clip's own time: logic.cast_step)
 --   every step (combat.every), also after the ability is over:
 --              the bomb flies (EMTweaks' ghost of the mod's bomb model) until it strikes an enemy or the ground; the blast: every enemy
---              within 2 blocks is hit with 2 times the damage stat, the one struck stunned; the bang (the mod's own sound), the flash (a
---              ghost) and the smoke (the game's particles); the player is kicked away from it into the bounce clip (the mode time is
---              rewound so the clip plays from its start, as the Fire Mage's release); then true stealth.
+--              within 2 blocks is hit with 2 times the damage stat, the one struck (or the nearest) stunned; the bang (the mod's own
+--              sound, quieter far away), the flash (a ghost) and the smoke (the game's particles); the player is kicked away from it
+--              into the bounce clip (the mode time is rewound so the clip plays from its start, as the Fire Mage's release); then
+--              true stealth.
 --              True stealth, each step while it lasts: the threat for the player of every enemy that holds one is written below 0
 --              (never the target), the player is kept out of the monsters' first-target scan (lib/sites on_scan) and the game's
 --              stealth is held full (the pale stealth look). It ends when its time runs out, the game's own stealth then draining
@@ -1598,14 +1605,15 @@ local function flash_step(dt)
   end
 end
 
-local function burst_look(impact)
+-- `ear`: the local player (the bang is quieter with its distance), nil: heard as the player's own.
+local function burst_look(impact, ear)
   local pos = world_pos(impact.x, impact.y, impact.z)
   if models.flash then
     local id = fx.ghost({ cub = models.flash, pos = pos, voxel = block.flash_voxel })
     if id ~= 0 then flashes[#flashes + 1] = { ghost = id, left = block.flash_ms } end
   end
   for _, def in ipairs(block.smoke) do fx.burst(def, pos) end
-  sound.play(block.bang_sound, block.bang_volume)
+  sound.play_at(block.bang_sound, block.bang_volume, impact, ear and place_of(ear) or nil)
 end
 
 -- ---- true stealth --------------------------------------------------------------------------------------------------------
@@ -1704,7 +1712,7 @@ local function on_watch_event(step, ev)
     if not finite(ev.x) or not finite(ev.y) or not finite(ev.z) then return end
     load_models()
     unwatch(id)
-    burst_look({ x = ev.x, y = ev.y, z = ev.z })
+    burst_look({ x = ev.x, y = ev.y, z = ev.z }, step.player)
     kyubu.info(("skills_unleashed: ninja: watched burst of player %d at %.1f, %.1f, %.1f"):format(id, ev.x, ev.y, ev.z))
   elseif ev.kind == logic.EVENT_STEALTH_ON then
     if not finite(ev.ms) or ev.ms <= 0 then return end
@@ -1753,7 +1761,7 @@ local function blast(step, impact, enemies)
     local pid = combat.id(player)
     for _, v in ipairs(victims) do combat.hit(pid, v.c.addr, damage, v.stun_ms) end
   end
-  burst_look(impact)
+  burst_look(impact, player)
   local vx, vy, vz = logic.blast_push(block, place_of(player), impact)
   combat.launch(player, vx, vy, vz)
   logic.stealth_start(block, state, state.cast.rank)
@@ -2457,6 +2465,7 @@ package.preload["skills_unleashed.abilities.sniper"] = function(...)
 --
 -- In single-player the arrow's hits are the owner's. On a joined client the arrow still flies and is drawn (its shoot packet is the
 -- server's input) but makes no hit: the server flies its checked copy and makes them (server/sniper.lua).
+-- A bystander rebuilds another player's bow from their run and their equipment ("another player's bow" below).
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -2483,12 +2492,15 @@ local state = logic.new_state()
 local owner = nil                 -- the player creature the state belongs to (an address)
 local number = nil                -- the ability's number, for the cooldown map
 local pending = {}                -- what the callbacks noted since the last step: { kind =, ... } in order
-local last_arrow = nil            -- where the arrow was at its last step, {x, y, z} in blocks
+local own_flight = { last = nil, phase = 0, pulse_ms = 0 }   -- the own arrow's look: where it was at its last step ({x, y, z}
+                                  -- in blocks), the helix of the swirl (radians at the arrow), the time to its next pulse ring
+local seen = {}                   -- another player's id -> what this client shows of their bow (entry_of)
+local watched_flights = {}        -- another player's arrow (its address) -> its look, as own_flight, and age_ms
+local watch_world, watch_ear = nil, nil   -- the World of the last step and this client's player's place then
+local setup, unsee, watch_tick    -- below
 local steer_ms = 0                -- lib/fx steers the charge's and the trail's particles while this is above 0
 local RULE_CHARGE, RULE_TRAIL, RULE_MOTES = "sniper.charge", "sniper.trail", "sniper.motes"
 local RULE_SWIRL, RULE_PUFF = "sniper.swirl", "sniper.puff"
-local swirl_phase = 0            -- the helix of the swirl, in radians at the arrow
-local pulse_ms = 0               -- the time to the next pulse ring of the arrow
 local ready = false
 local slow_from = nil             -- where the slow left the player at the last step of the summoning, {x, y} in blocks
 local watch = false               -- a bow was given in this world: the frame guard looks after the player until the world is left
@@ -2551,57 +2563,64 @@ local function ghost_off()
   ghost = nil
 end
 
--- The halo: from the press a slow white ring over the bow and the rays down from it, which turn.
--- `fading`: the fade after the take, which takes the place of what is alive (EMTweaks cannot fade a ring or a ray it was given).
-local function halo_spawn(fading)
+-- The halo: from the press a slow white ring over the bow and the rays down from it, which turn. A halo is a table { centre
+-- (blocks), age_ms, ring (id), rays = { ids }, fade_ms (nil until the fade) }: the player's own is `halo`, a watched player's in
+-- their entry of `seen`.
+-- A fading one takes the place of what is alive (EMTweaks cannot fade a ring or a ray it was given).
+local function halo_make(centre, age_ms, fade_ms)
   local t = block
-  halo.ring = fx.shockwave(logic.halo_ring_def(t, world_pos(unpack(halo.centre)), halo.age_ms, fading))
-  halo.rays = {}
+  local fading = fade_ms ~= nil
+  local h = { centre = centre, age_ms = age_ms, fade_ms = fade_ms, rays = {} }
+  h.ring = fx.shockwave(logic.halo_ring_def(t, world_pos(unpack(centre)), age_ms, fading))
   for k = 1, t.halo_rays do
-    local start, dir, length = logic.halo_ray(t, halo.centre, halo.age_ms, k)
-    halo.rays[k] = fx.beam(logic.halo_ray_def(t, world_pos(unpack(start)), dir, length, fading))
+    local start, dir, length = logic.halo_ray(t, centre, age_ms, k)
+    h.rays[k] = fx.beam(logic.halo_ray_def(t, world_pos(unpack(start)), dir, length, fading))
   end
+  return h
+end
+
+local function halo_drop(h)
+  if not h then return end
+  fx.shockwave_cancel(h.ring)
+  for _, id in ipairs(h.rays) do fx.beam_cancel(id) end
+end
+
+-- The take, or the summoning's end: the ring and the rays fade out where they are. Returns the halo that stands now.
+local function halo_faded(h)
+  if not h or h.fade_ms then return h end
+  halo_drop(h)
+  return halo_make(h.centre, h.age_ms, block.halo_fade_ms)
+end
+
+-- One step of a halo: the rays turn. Returns the halo, or nil once its fade is over.
+local function halo_step(h, dt)
+  if not h then return nil end
+  local t = block
+  h.age_ms = h.age_ms + dt
+  if h.fade_ms then
+    h.fade_ms = h.fade_ms - dt
+    if h.fade_ms <= 0 then return nil end
+  end
+  for k, id in ipairs(h.rays) do
+    local start, dir, length = logic.halo_ray(t, h.centre, h.age_ms, k)
+    fx.beam_move(id, world_pos(unpack(start)), dir, length)
+  end
+  return h
 end
 
 local function halo_cancel()
-  if not halo then return end
-  fx.shockwave_cancel(halo.ring)
-  for _, id in ipairs(halo.rays) do fx.beam_cancel(id) end
+  halo_drop(halo)
   halo = nil
 end
 
 local function halo_on(player)
   halo_cancel()
-  halo = { centre = logic.halo_centre(block, place_of(player), facing_of(player)), age_ms = 0 }
-  halo_spawn(false)
+  halo = halo_make(logic.halo_centre(block, place_of(player), facing_of(player)), 0)
 end
 
--- The take, or the summoning's end: the ring and the rays fade out where they are.
-local function halo_fade()
-  if not halo or halo.fade_ms then return end
-  local age, centre = halo.age_ms, halo.centre
-  halo_cancel()
-  halo = { centre = centre, age_ms = age, fade_ms = block.halo_fade_ms }
-  halo_spawn(true)
-end
+local function halo_fade() halo = halo_faded(halo) end
 
--- Every step: the rays turn; a faded halo is let go.
-local function keep_halo(step)
-  if not halo then return end
-  local t = block
-  halo.age_ms = halo.age_ms + step.dt
-  if halo.fade_ms then
-    halo.fade_ms = halo.fade_ms - step.dt
-    if halo.fade_ms <= 0 then
-      halo = nil
-      return
-    end
-  end
-  for k, id in ipairs(halo.rays) do
-    local start, dir, length = logic.halo_ray(t, halo.centre, halo.age_ms, k)
-    fx.beam_move(id, world_pos(unpack(start)), dir, length)
-  end
-end
+local function keep_halo(step) halo = halo_step(halo, step.dt) end
 
 -- No burst here: it did not fit; the motes are already falling, the ring and the rays come later. The bow
 -- starts to fade in, see-through, where the hands will hold it.
@@ -2684,7 +2703,9 @@ local function forget()
   fx.rule(RULE_SWIRL, nil)
   fx.rule(RULE_PUFF, nil)
   fx.rule(RULE_MOTES, nil)
-  last_arrow, steer_ms = nil, 0
+  own_flight.last, steer_ms = nil, 0
+  for id in pairs(seen) do unsee(id) end
+  watched_flights = {}
   owner = nil
   slow_from, watch, repair_ms = nil, false, 0
   ghost_off()                       -- a ghost has no life of its own: the mod that made it ends it
@@ -2800,7 +2821,8 @@ local function tick(step)
   run_pending(step)
   keep_halo(step)
   glow_step(step)
-  pulse_ms = pulse_ms - step.dt
+  own_flight.pulse_ms = own_flight.pulse_ms - step.dt
+  watch_tick(step)
   bow.poll(step.dt, block.arrow_life_ms)
   if not logic.active(state) then
     keep_steering(step)
@@ -2876,38 +2898,199 @@ local function on_arrow(creature, charge, sx, sy, sz)
   local x, y = p.x + facing.x * t.wave_forward, p.y + facing.y * t.wave_forward
   fx.shockwave(logic.wave_def(t, world_pos(x, y, p.z + t.bow_height), facing))
   sound.play(t.release_sound, t.release_volume)
-  last_arrow, swirl_phase, pulse_ms = nil, 0, block.pulse_every_ms
+  own_flight.last, own_flight.phase, own_flight.pulse_ms = nil, 0, block.pulse_every_ms
   local dx, dy, dz = arrow_direction(creature, { x = sx, y = sy, z = sz })
   kyubu.info(("skills_unleashed: sniper: the arrow: charge %.2f, damage %.1f (%.1f times the damage stat), %s")
     :format(state.charge, damage, logic.damage_mult(t, state.charge), dx and "a near aim, levelled" or "the game's aim"))
   return damage, t.arrow_speed, dx, dy, dz
 end
 
-local function on_flight(x, y, z)
+-- One World step of an arrow's look `fl` (own_flight, or a watched arrow's): the swirl behind it and a pulse ring now and then.
+local function flight_look(fl, x, y, z)
   local t = block
   local now = { x = x, y = y, z = z }
   steer_ms = t.steer_linger_ms          -- no plain trail: the swirl is the trail
   fx.rule(RULE_SWIRL, logic.swirl_rule(t))
   local swirl = logic.particles(t, "swirl")
   local points
-  points, swirl_phase = logic.swirl(t, last_arrow, now, swirl_phase)
+  points, fl.phase = logic.swirl(t, fl.last, now, fl.phase)
   for _, p in ipairs(points) do
     swirl.accel = p.vel
     fx.burst(swirl, world_pos(unpack(p.pos)))
   end
-  if pulse_ms <= 0 then
-    pulse_ms = pulse_ms + t.pulse_every_ms
-    local dir = logic.flight_dir(last_arrow, now)
+  if fl.pulse_ms <= 0 then
+    fl.pulse_ms = fl.pulse_ms + t.pulse_every_ms
+    local dir = logic.flight_dir(fl.last, now)
     if dir then fx.shockwave(logic.pulse_def(t, world_pos(x, y, z), dir)) end
   end
-  last_arrow = now
+  fl.last = now
 end
 
-local function on_surface(x, y, z)
+local function on_flight(x, y, z) flight_look(own_flight, x, y, z) end
+
+local function puff(x, y, z)
   fx.rule(RULE_PUFF, logic.puff_rule(block))
   steer_ms = block.steer_linger_ms
   fx.burst(logic.particles(block, "puff"), world_pos(x, y, z))
-  last_arrow = nil
+end
+
+local function on_surface(x, y, z)
+  puff(x, y, z)
+  own_flight.last = nil
+end
+
+-- ---- another player's bow (a joined client watching them) ------------------------------------------------------------------
+-- Their run (the watch callbacks) starts the halo over them, the spawn sound at their clip's `spawn` and the halo's fade at
+-- `catch`. While this client sees the bow in their hand (lib/bow holds: the marked item comes with their equipment): its light,
+-- and while they charge it the charge's particles and sound, which follow their charged mp. Their arrow (lib/bow's watched
+-- arrow): the release's wave and sound where it starts, its swirl and pulse rings, the puff where it ends. Every sound is
+-- quieter with its distance from this client's player (lib/sound play_at). Nothing here touches a creature.
+
+local function ear_of(step)
+  return step.player and place_of(step.player) or nil
+end
+
+-- The entry of player `id`, made on first use: { halo, run (their run is on), held_ms (since the bow was last seen in their hand),
+-- ring_ms, sound_ms, light (a key of glow.light_set) }.
+local function entry_of(id)
+  local e = seen[id]
+  if not e then
+    e = { run = false, held_ms = nil, ring_ms = 0, sound_ms = 0, light = {} }
+    seen[id] = e
+  end
+  return e
+end
+
+function unsee(id)
+  local e = seen[id]
+  if not e then return end
+  halo_drop(e.halo)
+  glow.light_clear(e.light)
+  seen[id] = nil
+end
+
+-- lib/bow: true while player `id`'s projectiles of the arrow's shape are the mod's arrow (their bow is in the hand, or was a
+-- moment ago: the shot and the bow's end come in two messages).
+local function watched(id)
+  local e = seen[id]
+  return e ~= nil and e.held_ms ~= nil and e.held_ms <= block.watch_arrow_linger_ms
+end
+
+local function watched_charge(step, e, player)
+  local t = block
+  local x, y, z = logic.bow_point(t, place_of(player), facing_of(player))
+  fx.rule(RULE_CHARGE, logic.charge_rule(t, x, y, z))
+  steer_ms = t.steer_linger_ms
+  if logic.due(e, "ring_ms", step.dt, t.charge_particles_every_ms) then
+    fx.sphere(logic.particles(t, "charge_particles"), { x, y, z }, t.charge_particles_count, t.charge_radius_min, t.charge_radius_max)
+  end
+  if logic.due(e, "sound_ms", step.dt, t.charge_sound_every_ms) then
+    sound.play_at(logic.charge_sound(t, bow.charged(player)), t.charge_volume, { x = x, y = y, z = z }, ear_of(step))
+  end
+end
+
+-- Every World step: each watched player's halo, bow light and charge; an entry with no run, no bow and no halo goes.
+function watch_tick(step)
+  watch_world, watch_ear = step.world, ear_of(step)
+  for id, e in pairs(seen) do
+    local player = combat.find(step.world, id)
+    if not player then
+      unsee(id)
+    else
+      e.halo = halo_step(e.halo, step.dt)
+      if bow.holds(player) then
+        e.held_ms = 0
+        local x, y, z = logic.bow_point(block, place_of(player), facing_of(player))
+        glow.light_set(e.light, logic.bow_light(block, { x = x, y = y, z = z }))
+        e.charging = bow.is_charging(player)
+        if e.charging then watched_charge(step, e, player) end
+      else
+        glow.light_clear(e.light)
+        if e.held_ms then e.held_ms = e.held_ms + step.dt end
+      end
+      if not e.run and not e.halo and (e.held_ms == nil or e.held_ms > block.watch_arrow_linger_ms) then unsee(id) end
+    end
+  end
+  for proj, fl in pairs(watched_flights) do
+    fl.pulse_ms = fl.pulse_ms - step.dt
+    fl.age_ms = fl.age_ms + step.dt
+    if fl.age_ms > block.arrow_life_ms then watched_flights[proj] = nil end
+  end
+  bow.poll_watched(step.dt)
+end
+
+-- lib/bow: a watched arrow's World step; `first` at the first one seen, where it leaves the bow.
+local function on_watched_flight(proj, owner_id, first, x, y, z)
+  local fl = watched_flights[proj]
+  if first or not fl then
+    local t = block
+    fl = { last = nil, phase = 0, pulse_ms = t.pulse_every_ms, age_ms = 0 }
+    watched_flights[proj] = fl
+    local player = watch_world and combat.find(watch_world, owner_id) or nil
+    if player then
+      local facing = facing_of(player)
+      local p = place_of(player)
+      fx.shockwave(logic.wave_def(t, world_pos(p.x + facing.x * t.wave_forward, p.y + facing.y * t.wave_forward,
+        p.z + t.bow_height), facing))
+    end
+    sound.play_at(t.release_sound, t.release_volume, { x = x, y = y, z = z }, watch_ear)
+    kyubu.info(("skills_unleashed: sniper: watched arrow of player %d from %.1f, %.1f, %.1f"):format(owner_id, x, y, z))
+  end
+  flight_look(fl, x, y, z)
+end
+
+local function on_watched_surface(proj, x, y, z)
+  watched_flights[proj] = nil
+  puff(x, y, z)
+end
+
+local function watch_start(ctx)
+  setup()
+  local info = ctx.creature and ctx.creature.get and ctx.creature:get()
+  local id = info and info.id or nil
+  ctx.state.owner = id
+  if not id then return end
+  combat.defer(function(step)
+    local player = combat.find(step.world, id)
+    if not player then return end
+    local e = entry_of(id)
+    e.run = true
+    halo_drop(e.halo)
+    e.halo = halo_make(logic.halo_centre(block, place_of(player), facing_of(player)), 0)
+    kyubu.info(("skills_unleashed: sniper: watched summoning of player %d"):format(id))
+  end)
+end
+
+local function watch_markers(ctx)
+  local id = ctx.state.owner
+  if not id then return end
+  for _, name in ipairs(ctx:marker()) do
+    if name == logic.MARKER_SPAWN then
+      combat.defer(function(step)
+        local player = combat.find(step.world, id)
+        if player then sound.play_at(block.spawn_sound, block.spawn_volume, place_of(player), ear_of(step)) end
+      end)
+    elseif name == logic.MARKER_CATCH then
+      combat.defer(function()
+        local e = seen[id]
+        if e then e.halo = halo_faded(e.halo) end
+      end)
+    end
+  end
+end
+
+local function watch_step(ctx) watch_markers(ctx) end
+
+local function watch_end(ctx)
+  watch_markers(ctx)
+  local id = ctx.state.owner
+  if not id then return end
+  combat.defer(function()
+    local e = seen[id]
+    if not e then return end
+    e.run = false
+    e.halo = halo_faded(e.halo)
+  end)
 end
 
 -- ---- the skill tooltip ---------------------------------------------------------------------------------------------------
@@ -2927,7 +3110,7 @@ end
 
 -- ---- the definition ------------------------------------------------------------------------------------------------------
 
-local function setup()
+function setup()
   if ready then return end
   ready = true
   combat.init()
@@ -2935,7 +3118,8 @@ local function setup()
   combat.every(tick)
   bow.set_bow_model(BOW_MODEL_ID)
   bow.set_arrow_model(ARROW_MODEL_ID)
-  bow.install({ armed = armed, on_arrow = on_arrow, on_flight = on_flight, on_surface = on_surface, server_hits = combat.is_joined })
+  bow.install({ armed = armed, on_arrow = on_arrow, on_flight = on_flight, on_surface = on_surface, server_hits = combat.is_joined,
+    watched = watched, on_watched_flight = on_watched_flight, on_watched_surface = on_watched_surface })
 end
 
 -- Before the game loads its models: the arrow of the mod is a white copy of the game's own (the bow is a file of the mod's).
@@ -2983,6 +3167,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
+    watch = { on_start = watch_start, on_step = watch_step, on_end = watch_end },
   }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   if kyubu.model and kyubu.model.add then
@@ -2999,6 +3184,9 @@ function M.define()
   kyubu.on("lifecycle.world_exit", forget)
   kyubu.on("frame.begin", guard_frame)
 end
+
+M._seen = function() return seen, watched_flights end   -- for the unit test
+M._watched = watched
 
 return M
 end
@@ -3021,6 +3209,8 @@ package.preload["skills_unleashed.abilities.water_mage"] = function(...)
 -- ability-walk-speed), and lib/sites on_walk keeps it whole from on_start until the game's lock after on_end is over.
 -- A joined client applies nothing: the monsters are the server's (lib/combat is_joined). It draws its ring at
 -- once, and the chains of each snare when the server tells of it (lib/snare on_shown), caster and bystanders alike.
+-- Another player's pulse (the watch callbacks): at their clip's `cast` marker (or cast_ms and a slack) the ring leaves their feet
+-- with the cast sound, quieter with the distance; it catches nothing here.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
 local link = require("skills_unleashed.lib.link")
@@ -3166,6 +3356,46 @@ local function tick(step)
   end
 end
 
+-- ---- another player's pulse (the watch callbacks, a joined client) ----------------------------------------------------------
+
+local setup                       -- below: the hooks and the step callback, set up once
+
+local function watch_cast(step, owner_id)
+  local player = combat.find(step.world, owner_id)
+  if not player then return end
+  local feet = feet_of(player)
+  if not feet then return end
+  local ear = nil
+  if step.player then
+    local x, y, z = combat.position(step.player)
+    ear = { x = x, y = y, z = z }
+  end
+  sound.play_at(block.cast_sound, block.cast_volume, feet, ear)
+  local def = logic.pulse_def(block, logic.new_pulse(state, feet, 1))
+  def.pos = world_pos(unpack(def.pos))
+  if fx.pulse(def) == 0 then kyubu.warn("skills_unleashed: water_mage: EMTweaks refused a watched pulse: the ring is not drawn") end
+  kyubu.info(("skills_unleashed: water_mage: watched pulse of player %d from %.1f, %.1f, %.1f"):format(owner_id, feet.x, feet.y,
+    feet.z))
+end
+
+local function watch_start(ctx)
+  setup()
+  local info = ctx.creature and ctx.creature.get and ctx.creature:get()
+  ctx.state.owner = info and info.id or nil
+  ctx.state.cast = false
+end
+
+local function watch_step(ctx)
+  local st = ctx.state
+  if st.cast or not st.owner then return end
+  local due = (ctx.elapsed_ms or 0) >= block.cast_ms + block.watch_cast_slack_ms
+  for _, name in ipairs(ctx:marker()) do if name == logic.MARKER_CAST then due = true end end
+  if not due then return end
+  st.cast = true
+  local id = st.owner
+  combat.defer(function(step) watch_cast(step, id) end)
+end
+
 -- ---- the skill tooltip -----------------------------------------------------------------------------------------------------
 
 local function setup_tooltip()
@@ -3195,7 +3425,7 @@ end
 
 -- ---- the definition --------------------------------------------------------------------------------------------------------
 
-local function setup()
+function setup()
   if ready then return end
   ready = true
   combat.init()
@@ -3249,6 +3479,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
+    watch = { on_start = watch_start, on_step = watch_step },
   }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   kyubu.on("lifecycle.game_ready", setup_tooltip)
@@ -3256,7 +3487,7 @@ function M.define()
   kyubu.on("lifecycle.world_exit", forget)
 end
 
-M._tick, M._cast, M._keep_walk = tick, cast, keep_walk
+M._tick, M._cast, M._keep_walk, M._watch_cast = tick, cast, keep_walk, watch_cast
 M._state = function() return state, chains end   -- for the unit test
 
 return M
@@ -3398,6 +3629,10 @@ package.preload["skills_unleashed.lib.bow"] = function(...)
 -- would be a hitch at each cast. Nothing here detours a function that a worker thread calls: Lua that waits for one of the game's
 -- locks keeps the Lua state from the main thread, which holds that lock (a detour of save_character froze the game).
 -- A callback that fails is caught and logged once.
+-- Another player's arrow (a joined client watching them): their client made it kind 1 with no skill flag, which this client would
+-- draw as a spell (a fireball) and end with a spell's explosion. A projectile of that shape whose shooter `handlers.watched(id)`
+-- names is drawn as the mod's arrow, flies through creatures (its hits are the server's: none is made here) and ends as an arrow;
+-- handlers.on_watched_flight and on_watched_surface give the looks.
 -- Not proved in the game: the lock (read statically), death with the bow in the hand, the charge's hush (read
 -- statically), a joined client.
 local ffi = require("ffi")
@@ -3517,6 +3752,11 @@ local function is_marked(at)
   return u8(at + I_TYPE) == TYPE_WEAPON and u8(at + I_SUB) == SUB_BOW and i32(at + I_MARK) == MARK
 end
 M.is_marked = is_marked
+
+-- True when creature `c` (an address: any player, as this client sees it) holds a bow of the mod in either weapon slot.
+function M.holds(c)
+  return c ~= 0 and (is_marked(c + SLOT_RIGHT) or is_marked(c + SLOT_LEFT))
+end
 
 -- Makes the item at `at` a bow of the mod: an item that is a weapon keeps everything but its sub_type and the mark; an empty
 -- slot becomes a level 1 bow.
@@ -3750,6 +3990,21 @@ local function is_ours(proj)
   return p ~= 0 and i64(proj + PR_OWNER) == i64(p + C_ID)
 end
 
+-- Another player's arrows in flight here: projectile address -> { seen_ms = the clock at its last update }.
+local others = {}
+local clock_ms = 0
+
+-- True for another player's arrow of the mod (see the head of this file).
+local function is_watched(proj)
+  if proj == 0 or not handlers or not handlers.watched then return false end
+  if i32(proj + PR_KIND) ~= KIND_STRAIGHT or u8(proj + PR_SKILL) ~= 0 then return false end
+  local id = i64(proj + PR_OWNER)
+  local p = local_player()
+  if p ~= 0 and id == i64(p + C_ID) then return false end
+  return handlers.watched(id) == true
+end
+M._is_watched = is_watched                     -- for the unit test
+
 local function proj_pos(proj)
   return units.to_blocks(i64(proj + PR_POS)), units.to_blocks(i64(proj + PR_POS + 8)), units.to_blocks(i64(proj + PR_POS + 16))
 end
@@ -3764,6 +4019,15 @@ end
 function M._flight_reset()
   arrow, current, drawn, released = nil, nil, nil, 0
   arrow_slot = nil
+  others = {}
+end
+
+-- Every World step: another player's arrow not updated for a second is gone (the game removed it with no surface).
+function M.poll_watched(dt_ms)
+  clock_ms = clock_ms + dt_ms
+  for proj, o in pairs(others) do
+    if clock_ms - o.seen_ms > 1000 then others[proj] = nil end
+  end
 end
 
 local function on_bar(ctx)
@@ -3810,6 +4074,15 @@ end
 local function on_update(ctx)
   local proj = ctx.edi
   current = nil
+  if proj ~= 0 and not is_ours(proj) and is_watched(proj) then
+    local first = others[proj] == nil
+    others[proj] = { seen_ms = clock_ms }
+    if handlers.on_watched_flight then
+      local x, y, z = proj_pos(proj)
+      handlers.on_watched_flight(proj, i64(proj + PR_OWNER), first, x, y, z)
+    end
+    return
+  end
   if proj == 0 or not is_ours(proj) or arrow.ended then return end
   current = proj
   arrow.age = i32(proj + PR_AGE)
@@ -3817,10 +4090,17 @@ local function on_update(ctx)
 end
 
 local function on_stop(ctx)
-  if current and ctx.edi == current then put_u8(ctx.ebp - STOP_FLAG, 0) end
+  if (current and ctx.edi == current) or (ctx.edi ~= 0 and others[ctx.edi]) then put_u8(ctx.ebp - STOP_FLAG, 0) end
 end
 
 local function on_surface(ctx)
+  local proj = ctx.edi
+  if proj ~= 0 and others[proj] and proj ~= current then
+    put_i32(proj + PR_KIND, KIND_ARROW)          -- an arrow's end here too: no spell explosion
+    others[proj] = nil
+    if handlers.on_watched_surface then handlers.on_watched_surface(proj, proj_pos(proj)) end
+    return
+  end
   if not current or ctx.edi ~= current then return end
   put_i32(current + PR_KIND, KIND_ARROW)         -- the game ends it as its own arrow: a puff, no explosion, removal
   local x, y, z = proj_pos(current)
@@ -3833,6 +4113,7 @@ end
 -- Where `handlers.server_hits(world)` says the server makes the arrow's hits (a joined client),
 -- the arrow makes none here: the call is skipped, so no hit goes to the server, and it is logged.
 local function on_hit_creature(next, this, target, attacker, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, proj, a14)
+  if proj ~= 0 and proj ~= current and others[proj] then return 0 end   -- another player's arrow: its hits are the server's
   if current and arrow and proj == current and target ~= 0 then
     local id = i64(target + C_ID)
     if arrow.hit[id] then return 0 end
@@ -3849,7 +4130,8 @@ M._on_hit_creature = on_hit_creature            -- for the unit test
 local function on_draw_kind(ctx)
   end_draw()                                     -- a draw whose end was not seen
   local proj = ctx.esi
-  if proj == 0 or not arrow or not is_ours(proj) then return end
+  if proj == 0 then return end
+  if not (arrow and is_ours(proj)) and not (others[proj] and is_watched(proj)) then return end
   put_i32(proj + PR_KIND, KIND_ARROW)
   drawn = proj
 end
@@ -3873,7 +4155,7 @@ end
 local function holds_bow(record)
   if record == 0 then return false end
   local c = u32(record)
-  return c ~= 0 and (is_marked(c + SLOT_RIGHT) or is_marked(c + SLOT_LEFT))
+  return M.holds(c)
 end
 
 -- draw_creature_quiver_left_site / _right_site: the game has taken the quiver model (EAX) it draws on the back of a creature that
@@ -4277,6 +4559,7 @@ local function warn_once(key, text)
 end
 
 local damage_stat_fn = nil                   -- the attacker's damage stat, __fastcall(cube::Creature*) -> float
+local protection_fn = {}                     -- [true] cube::Creature::resistance, [false] cube::Creature::armor: thiscall () -> float
 local play_sound_fn = nil                    -- play_sound(GameController*, id, int64 pos[3]*, volume, pitch), thiscall, ret 0x10
 local controller_at = nil                    -- the address of the global that holds the GameController*
 local map_slot_fn = nil                    -- creature_map_slot, thiscall(std::map*, const int64_t* id) -> float* (inserts a missing id)
@@ -4293,6 +4576,10 @@ end
 function M.init()
   local d = kyubu.symbol("creature_damage")
   if d then damage_stat_fn = ffi.cast("float(__fastcall*)(void*)", d) end
+  local r = kyubu.symbol("cube::Creature::resistance")
+  if r then protection_fn[true] = ffi.cast("float(__fastcall*)(void*)", r) end
+  local a = kyubu.symbol("cube::Creature::armor")
+  if a then protection_fn[false] = ffi.cast("float(__fastcall*)(void*)", a) end
   local m = kyubu.symbol("creature_map_slot")
   if m then map_slot_fn = ffi.cast("float*(__fastcall*)(void*, void*, const int64_t*)", m) end
   local e = kyubu.symbol("creature_map_erase")
@@ -4540,6 +4827,25 @@ function M.hit(attacker_id, target, damage, stun_ms, magic, knock)
   local landed, err = g.hit(ah, th, { damage = damage, stun_ms = stun_ms or 0, magic = magic == true, knock = knock })
   if landed == nil then warn_once("hit:" .. tostring(err), "kyubu.game.hit refused: " .. tostring(err)) end
   return landed == true
+end
+
+-- What the game's hit takes off creature `target`'s damage (hitCreature subtracts it and stops at 0): its resistance when `magic`,
+-- else its armor. 0 when the game's function has no symbol (logged once).
+function M.protection(target, magic)
+  local fn = protection_fn[magic == true]
+  if not fn then
+    warn_once("protection", "cube::Creature::armor or ::resistance has no symbol: small hits may do nothing")
+    return 0
+  end
+  local v = fn(ffi.cast("void*", target))
+  if v ~= v or v < 0 then return 0 end
+  return v
+end
+
+-- A hit (as M.hit) that the target's armor (resistance when `magic`) does not cut: that part is added first, so the game's
+-- subtraction leaves `damage`. For the many small hits of a burning ground, which armor would take whole at a high level.
+function M.hit_through(attacker_id, target, damage, stun_ms, magic, knock)
+  return M.hit(attacker_id, target, damage + M.protection(target, magic), stun_ms, magic, knock)
 end
 
 -- True when the loader flags creature `c` (an address) unstoppable (creature_set_flags): a boss that no
@@ -6943,8 +7249,9 @@ package.preload["skills_unleashed.lib.sound"] = function(...)
 --
 -- The name goes in a std::string of the game's library: 16 bytes of text in place, then the size and the capacity 15. A longer
 -- name would need the string's heap form, which was not tried, so names are 15 characters at most.
--- A sound has no place: it is heard at the volume asked for (times the game's sound option), as the player's own. Other players
--- do not hear it.
+-- A sound has no place: play() is heard at the volume asked for (times the game's sound option), as the player's own. A sound of
+-- something in the world (another player's ability, a burst away from the player) goes through play_at(), which makes it quieter
+-- with its distance from the local player and silent from RANGE on.
 local ffi = require("ffi")
 
 local M = {}
@@ -6994,6 +7301,27 @@ function M.play(name, volume, pitch)
   local option = ffi.cast("int32_t*", gc + GC_VOLUME)[0]
   play_handle(ffi.cast("void*", engine), handle, option * (volume or 1) * PERCENT, 0, pitch or 1, 0)
   return true
+end
+
+M.RANGE = 40.0                    -- blocks: a placed sound is silent from here on
+
+-- The share of the volume heard `d` blocks away: 1 at the listener, falling in a straight line to 0 at `range` (default RANGE).
+function M.fade(d, range)
+  local f = 1 - d / (range or M.RANGE)
+  if f < 0 then return 0 end
+  return f
+end
+
+-- Plays `name` from `at` ({x, y, z}, blocks) as heard at `ear` ({x, y, z}: the local player), quieter with the distance. Without
+-- `ear` it is played as the player's own. Returns what play() returns, or false and "far" when nothing would be heard.
+function M.play_at(name, volume, at, ear, pitch, range)
+  local v = volume or 1
+  if ear then
+    local dx, dy, dz = at.x - ear.x, at.y - ear.y, at.z - ear.z
+    v = v * M.fade(math.sqrt(dx * dx + dy * dy + dz * dz), range)
+  end
+  if v <= 0 then return false, "far" end
+  return M.play(name, v, pitch)
 end
 
 return M
