@@ -60,6 +60,7 @@ function M.player_of(conn)
 end
 
 local function on_message(conn, t)
+  if type(t) == "table" and t.kind == "hello" then return end   -- lib/link's probe: it only checks that sending works
   local id = M.player_of(conn)
   if not id then
     warn_once("conn:" .. tostring(conn), "an event from connection " .. tostring(conn) .. " was refused (not a joined player)")

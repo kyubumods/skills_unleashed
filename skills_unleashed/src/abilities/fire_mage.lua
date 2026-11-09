@@ -24,6 +24,7 @@
 -- no damage.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local fx = require("skills_unleashed.lib.fx")
 local glow = require("skills_unleashed.lib.glow")
 local terrain = require("skills_unleashed.lib.terrain")
@@ -494,7 +495,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "fire_mage.png",
     anim = t.charge_clip,
@@ -508,7 +509,7 @@ function M.define()
     on_end = on_end,
     restarts = 1,                 -- the release writes the mode time 0 once: a server or a bystander keeps the run going
     watch = { on_start = watch_start, on_step = watch_step, on_end = watch_end },
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   kyubu.on("lifecycle.game_ready", setup_tooltip)
   kyubu.on("lifecycle.game_ready", setup)        -- the hook goes in at the menu: at the first use it costs a hitch

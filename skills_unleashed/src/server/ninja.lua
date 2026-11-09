@@ -24,6 +24,7 @@
 -- Not here: the cooldown (the server's admission gives the full one at the run's start, as the client does); anything drawn.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local sites = require("skills_unleashed.lib.sites")
 local terrain = require("skills_unleashed.lib.terrain")
 local channel = require("skills_unleashed.lib.ability_channel")
@@ -257,7 +258,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     duration_ms = t.duration_ms,
     mp_cost = t.mp_cost,
     max_rank = t.max_rank,
@@ -267,7 +268,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   channel.on(logic.EVENT_BOMB, on_bomb)
 end

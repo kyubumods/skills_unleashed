@@ -20,6 +20,7 @@
 -- with the smoke, puffs, specks and hit sounds, on its own clock from the event. Its own strikes it drew already.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local fx = require("skills_unleashed.lib.fx")
 local shadow = require("skills_unleashed.lib.shadow")
 local tooltip = require("skills_unleashed.lib.tooltip")
@@ -385,7 +386,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "assassin.png",
     anim = t.clip,
@@ -397,7 +398,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   -- The clones' strikes: abilities on no bar whose clips the loader's pose provider draws while lib/shadow swaps their numbers in.
   local names = {}

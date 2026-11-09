@@ -14,6 +14,7 @@
 -- server's `taunt_on` / `taunt_off` on skills_unleashed:world, and the immunity's blue tint on its own clock after a `taunt_off`.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local fx = require("skills_unleashed.lib.fx")
 local sites = require("skills_unleashed.lib.sites")
 local tooltip = require("skills_unleashed.lib.tooltip")
@@ -202,7 +203,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "guardian.png",
     anim = "skills_unleashed:guardian",
@@ -213,7 +214,7 @@ function M.define()
     claim = { slot = tuning.SLOT, class = "warrior", specialization = SPEC },
     on_start = on_start,
     on_step = on_step,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   if kyubu.model and kyubu.model.add then
     local mok, merr = pcall(kyubu.model.add, MODEL_ID, MODEL_FILE)

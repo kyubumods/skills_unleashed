@@ -128,6 +128,14 @@ The single-player messages travel over the loopback and are taken only from `KY_
 them from a joined player. The Sniper sends no message: `Server.exe` reads the game's own shoot packet (`kyubu.game.shot_take`)
 and flies the arrow with the game's projectile step, and the client's own hit is cut at its mapped site.
 
+**No channels, no abilities.** The loader carries channels only while the join gate is in force
+(sides-and-networking.md (Kyubu's `docs/sides-and-networking.md`), "Joined games"). Without them some abilities would still half-work
+from the mode the game syncs and the rest would do nothing, so `lib/link` guards every ability's callbacks: in a joined
+game the first start sends a probe (`hello`, ignored by both receivers), and if the loader answers `KY_E_NO_REMOTE` every
+run is cancelled at its start. On the client the log has one error line (`skills_unleashed: link: no channels ...`) and
+a window tells the player the abilities are off; on `Server.exe` the server's copy is cancelled and nothing is applied.
+The answer holds for the process (the gate is set when the loader boots). A single-player game needs no probe.
+
 ## Icons
 
 An ability's icon is a **14 x 14 opaque PNG** in `assets/icons/`, named by its specialization, that looks like the game's
@@ -188,7 +196,7 @@ The pure logic and the shared library are unit-tested in a LuaJIT with a recordi
 
 ## Limits
 
-- **Joined games.** All eight abilities run on `Server.exe`. The caster and a watcher were checked with scripted clients for all eight. The Sniper's watcher was checked by screenshot only: the server relays the game's own arrow, and the mod logs nothing for it. The watcher's frames show the bow of light; none catches the arrow in flight. No two people have played a joined game yet.
+- **Joined games.** All eight abilities run on `Server.exe`. The caster and a watcher were checked with scripted clients for all eight. The Sniper's watcher was checked by screenshot only: the server relays the game's own arrow, and the mod logs nothing for it. The watcher's frames show the bow of light; none catches the arrow in flight. The first play on two PCs (0.1.3) found the channels off (a stale `level_rework` in the pack turned the join gate off); the replay `server-pack-0720` now runs the whole pack on a server and fails on any `ERROR` line or a gate that is not in force. It checks one ability (the Fire Mage); the other seven have not been played on two PCs with the gate in force.
 - **One rank per character.** The rank is `skills[9]`: a character that changes specialization keeps it.
 - **A claim wins over `any`.** Once SkillsUnleashed claims the warrior's specializations, the warrior demos
   (`shockwave_demo`, `fourth_ability_demo`), which claim the warrior's `any`, are
@@ -203,8 +211,8 @@ The pure logic and the shared library are unit-tested in a LuaJIT with a recordi
 
 ## Getting it
 
-Players install it in the game: choose **Mods** on the title menu (ModManager, which comes with Kyubu) and pick it
-from the catalog.
+Players install it in the game: choose **Mods** on the title menu (ModManager, which the Kyubu installer adds)
+and pick it from the catalog.
 
 ## Building
 

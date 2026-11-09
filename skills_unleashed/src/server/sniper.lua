@@ -20,6 +20,7 @@
 local ffi = require("ffi")
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local bow = require("skills_unleashed.lib.bow")
 local units = require("skills_unleashed.lib.units")
 local logic = require("skills_unleashed.logic.sniper")
@@ -251,7 +252,7 @@ function M.define()
   if not t then error(why) end
   block = t
   server_block = setmetatable({ hold_ms = t.hold_ms + t.shot_late_ms }, { __index = t })
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     duration_ms = t.duration_ms,
     mp_cost = t.mp_cost,
     max_rank = t.max_rank,
@@ -259,7 +260,7 @@ function M.define()
     claim = { slot = tuning.SLOT, class = "ranger", specialization = SPEC },
     on_start = on_start,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
 end
 

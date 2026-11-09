@@ -29,6 +29,7 @@
 -- `ms` + `watch_stealth_slack_ms` if that is lost, then writes 0. This player's own events are skipped: it draws its own.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local bow = require("skills_unleashed.lib.bow")
 local fx = require("skills_unleashed.lib.fx")
 local sites = require("skills_unleashed.lib.sites")
@@ -470,7 +471,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "ninja.png",
     anim = t.clip,
@@ -483,7 +484,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   bound = t.clip
   kyubu.on("lifecycle.game_ready", setup_tooltip)

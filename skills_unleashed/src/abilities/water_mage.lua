@@ -16,6 +16,7 @@
 -- once, and the chains of each snare when the server tells of it (lib/snare on_shown), caster and bystanders alike.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local fx = require("skills_unleashed.lib.fx")
 local sites = require("skills_unleashed.lib.sites")
 local snare = require("skills_unleashed.lib.snare")
@@ -229,7 +230,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "water_mage.png",
     anim = t.clip,
@@ -241,7 +242,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   kyubu.on("lifecycle.game_ready", setup_tooltip)
   kyubu.on("lifecycle.game_ready", setup)          -- the hooks go in at the menu, never at a cast

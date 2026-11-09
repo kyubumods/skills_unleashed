@@ -25,6 +25,7 @@
 -- server's input) but makes no hit: the server flies its checked copy and makes them (server/sniper.lua).
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local bow = require("skills_unleashed.lib.bow")
 local fx = require("skills_unleashed.lib.fx")
 local glow = require("skills_unleashed.lib.glow")
@@ -536,7 +537,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "sniper.png",
     anim = "skills_unleashed:sniper",
@@ -548,7 +549,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     on_end = on_end,
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   if kyubu.model and kyubu.model.add then
     for _, m in ipairs({ { BOW_MODEL_ID, BOW_MODEL_FILE }, { ARROW_MODEL_ID, ARROW_MODEL_FILE } }) do

@@ -3,6 +3,7 @@
 lib.bow
 lib.combat
 lib.effect_log
+lib.link
 lib.sites
 lib.snare
 lib.terrain

@@ -17,6 +17,7 @@
 --              push, no stun, no hop.
 local tuning = require("skills_unleashed.lib.tuning")
 local combat = require("skills_unleashed.lib.combat")
+local link = require("skills_unleashed.lib.link")
 local fx = require("skills_unleashed.lib.fx")
 local tooltip = require("skills_unleashed.lib.tooltip")
 local units = require("skills_unleashed.lib.units")
@@ -236,7 +237,7 @@ function M.define()
   local t, why = tuning.get(SPEC)
   if not t then error(why) end
   block = t
-  local ok, err = kyubu.ability.define(ID, {
+  local ok, err = kyubu.ability.define(ID, link.guard(ID, {
     icon = "cubeworld:smash",
     icon_file = "berserker.png",
     anim = "skills_unleashed:berserker",
@@ -248,7 +249,7 @@ function M.define()
     on_start = on_start,
     on_step = on_step,
     watch = { on_start = watch_start, on_step = watch_step },
-  })
+  }))
   if not ok then error("kyubu.ability.define: " .. tostring(err)) end
   kyubu.on("lifecycle.game_ready", setup_tooltip)
 end
