@@ -1,6 +1,6 @@
 id = "skills_unleashed"
 name = "SkillsUnleashed"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Penchev"]
 kyubu = "^1.4"
 sides = ["client", "server"]
